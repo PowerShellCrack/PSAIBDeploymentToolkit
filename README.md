@@ -1,20 +1,22 @@
 # A project to manage multiple images for AIB
 
-The original idea was to take a standard On-premise MDT _build and capture_ deploymentshare to move it into a supported AIB deployment. The structure is similar to MDT's and each defined "sequenced" process is within the _Control_ folder. Each sequence contains an **aib.json** file. This file is not a schema that follows the Azure IMage builder schema; this file is used in conjunction of the _Scripts_\Sequence.ps1 and a standard template file, within the _Template_ folder, will generate a supported ARM template file for AIB. The next process is to create an automated process that will copy applications, templates and configurations into a blob container for AIB to consume.
+The original idea was to replicate a standard on-premise MDT _build and capture_ Task sequence and it's deploymentshare into a supported AIB deployment template. The structure is similar to MDT's and each defined "sequenced" process is within the _Control_ folder. Each "sequence" contains an **aib.json** file.
+This file is not a schema that follows the Azure Image builder schema, however with this file in conjunction with a basic template file (within the _Template_ folder), the _Scripts_\Sequence.ps1 will generate a supported ARM template file for AIB.
+The next process is to create an automated process that will copy applications, templates and configurations into a blob containers for AIB to consume.
 
 # THIS IS A WORK IN PROGRESS
 
 
-These are the images i have planned or have tested with this toolkit and the results
+These are the images that have been planned or have been tested with this toolkit and the results
 
-Image|Included|Tested|Results|Comments
---|--|--|--|--
-Win10avdMarketImage | 21h2 | Yes | **Success** | Gen2 Marketplace VM no updates. Just to see if AIB worked
-Win10avdLatestUpdates | 21h2, Updates | Yes | **Success** | Gen2 Marketplace VM with updates set to run.
-Win10avdO365Image | 21h2, Office 365, Updates | Yes | **Success** | Gen2 Marketplace VM with M365 apps and updates set to run.
-Win10avdSimpleImage| 21h2, Branding, Updates |Yes|**Success** | Gen2 Marketplace VM with branding script (wallpaper and lockscreen) and updates set to run.
-Win10avdBaselineImage | 21h2, Office 365, Teams, Fslogix, Onedrive, Updates, Optimizations, VM Preparation | Yes | Failed| Gen2 Marketplace VM; added scripts to install Microsoft 365 apps to latest version in Multisession mode with policy configured
-Win10avdHardenedImage | 21h2, Office 365, Teams, Fslogix, Onedrive, Updates, Optimizations, VM Preparation, STIGS | No | | Gen2 Marketplace VM; added scripts to install Microsoft 365 apps to latest version in Multisession mode with STIG policy configured
+Image|Description|Included|Tested|Results|Comments
+--|--|--|--|--|--
+Win10avdMarketImage |Gen2 Marketplace VM no updates. Just to see if AIB worked | 21h2  | Yes | **Success** |
+Win10avdLatestUpdates | Gen2 Marketplace VM with updates set to run. | 21h2, Updates | Yes | **Success**|
+Win10avdO365Image | Gen2 Marketplace VM with M365 apps and updates set to run. | 21h2, Office 365, Updates | Yes | **Success**
+Win10avdSimpleImage | Gen2 Marketplace VM with branding script (wallpaper and lockscreen) and updates set to run.| 21h2, Branding, Updates |Yes|**Success**| Needs work on branding script
+Win10avdBaselineImage| Gen2 Marketplace VM; added scripts to install Microsoft 365 apps to latest version in Multisession mode with policy configured | 21h2, Office 365, Teams, Fslogix, Onedrive, Updates, Optimizations, VM Preparation | Yes | Failed | Some issues with application scripts and installer for modules; added PSGallery trust and Nuget update for anything PowerShell calls
+Win10avdHardenedImage| Gen2 Marketplace VM; added scripts to install Microsoft 365 apps to latest version in Multisession mode with STIG policy configured | 21h2, Office 365, Teams, Fslogix, Onedrive, Updates, Optimizations, VM Preparation, STIGS | No ||Working on STIG scripts
 
 
 ## TODOs
