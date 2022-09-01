@@ -13,12 +13,13 @@ Param(
 # VARIABLES
 #=======================================================
 $ErrorActionPreference = "Stop"
-$Label = 'Microsoft Teams'
+$ProductName = 'Teams Machine-Wide Installer'
 $LocalPath = "$env:Windir\AIB\apps\teams"
-$Installer = 'teams.msi'
+$Installer = 'Teams_windows_x64.msi'
 $visCplusURL = 'https://aka.ms/vs/16/release/vc_redist.x64.exe'
 $webSocketsURL = 'https://query.prod.cms.rt.microsoft.com/cms/api/am/binary/RE4AQBt'
 $AVDScenario = $True
+$ValidExitCodes = @(0,3010)
 ##*=============================================
 ##* INSTALL MODULES
 ##*=============================================
@@ -106,7 +107,7 @@ Catch{
 
 If($AVDScenario){
     # set teams registry to support AVD
-    Write-YaCMLogEntry -Message ('Setting {1} AVD mode in registry [{0}]...' -f 'IsWVDEnvironment',$label) -Passthru
+    Write-YaCMLogEntry -Message ('Setting {1} AVD mode in registry [{0}]...' -f 'IsWVDEnvironment',$ProductName) -Passthru
     Set-LocalPolicySetting -RegPath 'HKLM:\SOFTWARE\Microsoft\Teams' -Name IsWVDEnvironment -Type DWord -Value 1 -Force
 }
 
@@ -116,21 +117,22 @@ $visCplusURLexe = Split-Path $visCplusURL -Leaf
 $outputPath = Join-Path $LocalPath -ChildPath $visCplusURLexe
 Try{
     Write-YaCMLogEntry -Message ('Downloading Microsoft Visual C++ Redistributable from [{0}]...' -f $visCplusURL) -Passthru
-    Invoke-WebRequest -Uri $visCplusURL -OutFile $outputPath -Verbose
+    Invoke-WebRequest -Uri $visCplusURL -OutFile $outputPath
 }
 Catch{
     Write-YaCMLogEntry -Message ('Unable to download {0}. {1}' -f $visCplusURLexe,$_.Exception.message) -Severity 3 -Passthru
     Break
 }
 
-Try{
-    $InstallArguments = "/install /quiet /norestart /log $env:Windir\Logs\teams_vcdist.log"
-    Write-YaCMLogEntry -Message ('Running Command: Start-Process -FilePath "{0}" -ArgumentList "{1}" -Wait -Passthru -WindowStyle Hidden' -f $outputPath,$InstallArguments) -Passthru
-    $Result = Start-Process -FilePath $outputPath -Args $InstallArguments -Wait -Passthru -WindowStyle Hidden
-}
-Catch{
-    Write-YaCMLogEntry -Message ('Unable to install {0}. {1}' -f $visCplusURLexe,$_.Exception.message) -Severity 3 -Passthru
-    Break
+
+$InstallArguments = "/install /quiet /norestart /log $env:Windir\Logs\teams_vcdist.log"
+Write-YaCMLogEntry -Message ('Running Command: Start-Process -FilePath "{0}" -ArgumentList "{1}" -Wait -Passthru -WindowStyle Hidden' -f $outputPath,$InstallArguments) -Passthru
+$Result = Start-Process -FilePath $outputPath -Args $InstallArguments -Wait -Passthru -WindowStyle Hidden
+
+#get results and see if they are valid
+If($Result.ExitCode -notin $ValidExitCodes){
+    Write-YaCMLogEntry -Message ('Unable to install {1}. {0}' -f $Result.ExitCode,$visCplusURLexe) -Severity 3 -Passthru
+    Return $Result.ExitCode
 }
 
 # install webSoc svc
@@ -141,30 +143,32 @@ If($AVDScenario){
     $InstallArguments = "/i $outputPath /quiet /norestart /log $env:Windir\Logs\teams_webSocket.log"
 
     Try{
-        Write-YaCMLogEntry -Message ('Downloading {1} WebSocket Service from [{0}]...' -f $webSocketsURL,$Label) -Passthru
-        Invoke-WebRequest -Uri $webSocketsURL -OutFile $outputPath -Verbose
+        Write-YaCMLogEntry -Message ('Downloading Microsoft Remote Desktop WebRTC Redirector Service from [{0}]...' -f $webSocketsURL) -Passthru
+        Invoke-WebRequest -Uri $webSocketsURL -OutFile $outputPath
     }
     Catch{
         Write-YaCMLogEntry -Message ('Unable to download {0}. {1}' -f $webSocketsInstallerMsi,$_.Exception.message) -Severity 3 -Passthru
         Break
     }
 
-    Try{
-        Write-YaCMLogEntry -Message ('Running Command: Start-Process -FilePath "msiexec.exe" -ArgumentList "{0}" -Wait -Passthru -WindowStyle Hidden' -f $InstallArguments) -Passthru
-        $Result = Start-Process -FilePath msiexec.exe -Args $InstallArguments -Wait -Passthru -WindowStyle Hidden
-    }
-    Catch{
-        Write-YaCMLogEntry -Message ('Unable to install {0}. Exit: {1}. Error: {2}' -f $webSocketsInstallerMsi,$Result.ExitCode,$_.Exception.message) -Severity 3 -Passthru
-        Break
+
+    Write-YaCMLogEntry -Message ('Running Command: Start-Process -FilePath "msiexec.exe" -ArgumentList "{0}" -Wait -Passthru -WindowStyle Hidden' -f $InstallArguments) -Passthru
+    $Result = Start-Process -FilePath msiexec.exe -Args $InstallArguments -Wait -Passthru -WindowStyle Hidden
+
+    #get results and see if they are valid
+    If($Result.ExitCode -notin $ValidExitCodes){
+        Write-YaCMLogEntry -Message ('Unable to install {1}. {0}' -f $Result.ExitCode,$webSocketsInstallerMsi) -Severity 3 -Passthru
+        Return $Result.ExitCode
     }
 }
 
 
 #download teams
 #--------------------
+$outputPath = Join-Path $LocalPath -ChildPath $Installer
 Try{
-    Write-YaCMLogEntry -Message ('Downloading {1} from [{0}]...' -f $InternetURI,$Label) -Passthru
-    Invoke-WebRequest -Uri $InternetURI -OutFile $outputPath -Verbose
+    Write-YaCMLogEntry -Message ('Downloading {1} from [{0}]...' -f $InternetURI,$ProductName) -Passthru
+    Invoke-WebRequest -Uri $InternetURI -OutFile $outputPath
 }
 Catch{
     Write-YaCMLogEntry -Message ('Unable to download {0}. {1}' -f $installer,$_.Exception.message) -Severity 3 -Passthru
@@ -180,13 +184,13 @@ if (Test-Path -Path $TeamsUpdateExePath) {
     Write-YaCMLogEntry -Message ('Uninstalling Teams from [{0}]' -f $TeamsUpdateExePath) -Passthru
 
     # Uninstall app
-    Try{
-        Write-YaCMLogEntry -Message ('Running Command: Start-Process -FilePath "$TeamsUpdateExePath" -ArgumentList "-uninstall -s" -Wait -Passthru -WindowStyle Hidden' -f $InstallArguments) -Passthru
-        $Result = Start-Process -FilePath $TeamsUpdateExePath -Args "-uninstall -s" -Wait -Passthru -WindowStyle Hidden
-    }
-    Catch{
-        Write-YaCMLogEntry -Message ('Unable to uninstall {0}. Exit: {1}. Error: {2}' -f $Installer,$Result.ExitCode,$_.Exception.message) -Severity 3 -Passthru
-        Break
+    Write-YaCMLogEntry -Message ('Running Command: Start-Process -FilePath "$TeamsUpdateExePath" -ArgumentList "-uninstall -s" -Wait -Passthru -WindowStyle Hidden' -f $InstallArguments) -Passthru
+    $Result = Start-Process -FilePath $TeamsUpdateExePath -Args "-uninstall -s" -Wait -Passthru -WindowStyle Hidden
+
+    #get results and see if they are valid
+    If($Result.ExitCode -notin $ValidExitCodes){
+        Write-YaCMLogEntry -Message ('Unable to uninstall {1}. {0}' -f $Result.ExitCode,$Installer) -Severity 3 -Passthru
+        Return $Result.ExitCode
     }
 }
 
@@ -201,36 +205,37 @@ $MachineWide = Get-InstalledSoftware | Where Name -eq "Teams Machine-Wide Instal
 #$MachineWide = Get-WmiObject -Class Win32_Product | Where-Object{$_.Name -eq "Teams Machine-Wide Installer"}
 If($MachineWide){
     $UninstallArguments = "/x $($MachineWide.GUID) /quiet /norestart /log $env:Windir\Logs\teams_uninstall.log"
-    Try{
-        Write-YaCMLogEntry -Message ('Uninstalling {0} version [{1}]' -f $MachineWide.Name,$MachineWide.Version) -Passthru
-        Write-YaCMLogEntry -Message ('Running Command: Start-Process -FilePath "msiexec.exe" -ArgumentList "{0}" -Wait -Passthru -WindowStyle Hidden' -f $UninstallArguments) -Passthru
-        $Result = Start-Process -FilePath msiexec.exe -Args $UninstallArguments -Wait -Passthru -WindowStyle Hidden
-    }
-    Catch{
-        Write-YaCMLogEntry -Message ('Unable to uninstall {0}. Exit: {1}. Error: {2}' -f $MachineWide.Name,$Result.ExitCode,$_.Exception.message) -Severity 3 -Passthru
-        Break
+
+    Write-YaCMLogEntry -Message ('Uninstalling {0} version [{1}]' -f $MachineWide.Name,$MachineWide.Version) -Passthru
+    Write-YaCMLogEntry -Message ('Running Command: Start-Process -FilePath "msiexec.exe" -ArgumentList "{0}" -Wait -Passthru -WindowStyle Hidden' -f $UninstallArguments) -Passthru
+    $Result = Start-Process -FilePath msiexec.exe -Args $UninstallArguments -Wait -Passthru -WindowStyle Hidden
+
+    #get results and see if they are valid
+    If($Result.ExitCode -notin $ValidExitCodes){
+        Write-YaCMLogEntry -Message ('Unable to uninstall {1}. {0}' -f $Result.ExitCode,$MachineWide.Name) -Severity 3 -Passthru
+        Return $Result.ExitCode
     }
 }
 
 
 # install Teams
 #--------------------
-$outputPath = Join-Path $LocalPath -ChildPath $Installer
-$InstallArguments = "/i $outputPath /quiet /norestart OPTIONS=`"noAutoStart=true`" ALLUSER=1 /log $env:Windir\Logs\teams.log"
-Try{
-    Write-YaCMLogEntry -Message ('Running Command: Start-Process -FilePath "msiexec.exe" -ArgumentList "{0}" -Wait -Passthru -WindowStyle Hidden' -f $InstallArguments) -Passthru
-    $Result = Start-Process -FilePath msiexec.exe -Args $InstallArguments -Wait -Passthru -WindowStyle Hidden
-}
-Catch{
-    Write-YaCMLogEntry -Message ('Unable to install {0}. Exit: {1}. Error: {2}' -f $Installer,$Result.ExitCode,$_.Exception.message) -Severity 3 -Passthru
-    Break
+
+$InstallArguments = "/i $outputPath /quiet /norestart OPTIONS=`"noAutoStart=true`" ALLUSER=1 ALLUSERS=1 /log $env:Windir\Logs\teams.log"
+Write-YaCMLogEntry -Message ('Running Command: Start-Process -FilePath "msiexec.exe" -ArgumentList "{0}" -Wait -Passthru -WindowStyle Hidden' -f $InstallArguments) -Passthru
+$Result = Start-Process -FilePath msiexec.exe -Args $InstallArguments -Wait -Passthru -WindowStyle Hidden
+
+#get results and see if they are valid
+If($Result.ExitCode -notin $ValidExitCodes){
+    Write-YaCMLogEntry -Message ('Unable to install {1}. {0}' -f $Result.ExitCode,$ProductName) -Severity 3 -Passthru
+    Return $Result.ExitCode
 }
 
 
 # setup firewall
 #--------------------
 Try{
-    Write-YaCMLogEntry -Message ('Setting Firewall policy for {0}...' -f $Label) -Passthru
+    Write-YaCMLogEntry -Message ('Setting Firewall policy for {0}...' -f $ProductName) -Passthru
     New-NetFirewallRule -DisplayName "Teams.exe" -Program "%LocalAppData%\Microsoft\Teams\current\Teams.exe" -Profile Domain -Direction Inbound -Action Allow -Protocol Any -EdgeTraversalPolicy Block
     New-NetFirewallRule -DisplayName "Teams.exe" -Program "%LocalAppData%\Microsoft\Teams\current\Teams.exe" -Profile Public,Private -Direction Inbound -Action Block -Protocol Any -EdgeTraversalPolicy Block
 }
@@ -241,4 +246,4 @@ Catch{
 
 #Cleanup and Complete
 Remove-Item $LocalPath -Force -Recurse -ErrorAction SilentlyContinue | Out-Null
-Write-YaCMLogEntry -Message ('Completed {0} install' -f $Label) -Passthru
+Write-YaCMLogEntry -Message ('Completed {0} install' -f $ProductName) -Passthru

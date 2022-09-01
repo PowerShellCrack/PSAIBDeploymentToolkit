@@ -1,6 +1,6 @@
 # A project to manage multiple images for AIB
 
-The original idea was to take a standard On-premise MDT _build and capture_ deploymentshare to move it into a supported AIB deployment. The structure is similar to MDT's and each defined "sequenced" process is within the _Control_ folder. Each sequence contains an **aib.json** file. This file is not a schema that follows the Azure IMage builder schema; this file is used in conjunction of the _Scripts_\Sequence.ps1 and a standard template file, within the _Template_ folder, will generate a supported ARM template file for AIB. The next process is to create an auotmated process that will copy applications, templates and configurations into a blob container for AIB to consume.
+The original idea was to take a standard On-premise MDT _build and capture_ deploymentshare to move it into a supported AIB deployment. The structure is similar to MDT's and each defined "sequenced" process is within the _Control_ folder. Each sequence contains an **aib.json** file. This file is not a schema that follows the Azure IMage builder schema; this file is used in conjunction of the _Scripts_\Sequence.ps1 and a standard template file, within the _Template_ folder, will generate a supported ARM template file for AIB. The next process is to create an automated process that will copy applications, templates and configurations into a blob container for AIB to consume.
 
 # THIS IS A WORK IN PROGRESS
 
@@ -36,7 +36,7 @@ Win10avdHardenedImage | 21h2, Office 365, Teams, Fslogix, Onedrive, Updates, Opt
             - application-onedrive-latest
             - application-teams-latest
 
-
+- Version control. I don't fully understand AIB's VM image versions.
 
 
 ## Prereqs
@@ -48,13 +48,13 @@ Win10avdHardenedImage | 21h2, Office 365, Teams, Fslogix, Onedrive, Updates, Opt
 
 ## recommended
 
-If you are contributing or using the code. Please create a copy of the Settings.json file in control folder and name it something like _Settings-\<user\>\.json_. (keep the **Settings-** in the filename); this file will be ignored during pull request.
+If you are contributing or using the code. Please create a copy of the _Settings.json_ file in control folder and name it something like _Settings-\<user\>\.json_. (keep the **Settings-** in the filename); this file will be ignored during pull request.
 > You don't want your secrets to be public.
 
 ## Scripts
 
 - **BuildAIBTemplate.ps1** <-- Main script to build aib template
-- **InvokeScriptsOnAzureVM.ps1.ps1** <-- designed to run post configs using Powershell extension NOT WORKING / TESTING
+- **InvokeScriptsOnAzureVM.ps1** <-- designed to run post configs using Powershell extension NOT WORKING / TESTING
 - **PrepareAIBMDTEnv.ps1** <-- Starting to work AIB configurator. NOT WORKING / TESTING
 
 ## Examples
@@ -64,7 +64,7 @@ If you are contributing or using the code. Please create a copy of the Settings.
 ```
 ## **aib.json** auto formatting
 
-The aib.json file in each sequence is a custom format designed to simplify the complex deployment of scripts & applications for AIB.
+There is an _aib.json_ (...kind of like the TS.xml in MDT. :grin:) file in each sequence is a custom format designed decide what template to use and to simplify the complex deployment of scripts & applications for AIB.
 
 1. _Example:_ To deploy a branding customization that has both theme, wallpaper, and lockscreen requires several customize steps will need to be set:
     - 3x copy steps

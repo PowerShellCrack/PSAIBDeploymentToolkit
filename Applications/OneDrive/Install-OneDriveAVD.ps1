@@ -14,11 +14,12 @@ Param(
 # VARIABLES
 #=======================================================
 $ErrorActionPreference = "Stop"
-$Label = 'Onedrive'
+$ProductName = "Microsoft OneDrive"
 $Localpath = "$env:Windir\AIB\apps\onedrive"
 $Installer = 'OneDriveSetup.exe'
 $InstallArguments = "/allusers"
 $AVDScenario = $True
+$ValidExitCodes = @(0,3010)
 ##*=============================================
 ##* INSTALL MODULES
 ##*=============================================
@@ -29,6 +30,51 @@ Install-Module -Name YetAnotherCMLogger,LGPO
 Import-Module YetAnotherCMLogger
 Import-Module LGPO
 
+function Get-InstalledSoftware {
+    <#
+    .SYNOPSIS
+        Retrieves a list of all software installed
+    .EXAMPLE
+        Get-InstalledSoftware
+
+        This example retrieves all software installed on the local computer
+    .PARAMETER Name
+        The software title you'd like to limit the query to.
+    #>
+    [OutputType([System.Management.Automation.PSObject])]
+    [CmdletBinding()]
+    param (
+        [Parameter()]
+        [ValidateNotNullOrEmpty()]
+        [string]$Name
+    )
+
+    $UninstallKeys = "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall", "HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall"
+    $null = New-PSDrive -Name HKU -PSProvider Registry -Root Registry::HKEY_USERS
+    $UninstallKeys += Get-ChildItem HKU: -ErrorAction SilentlyContinue | Where-Object { $_.Name -match 'S-\d-\d+-(\d+-){1,14}\d+$' } | ForEach-Object { "HKU:\$($_.PSChildName)\Software\Microsoft\Windows\CurrentVersion\Uninstall" }
+    if (-not $UninstallKeys) {
+        Write-Verbose -Message 'No software registry keys found'
+    } else {
+        foreach ($UninstallKey in $UninstallKeys) {
+            if ($PSBoundParameters.ContainsKey('Name')) {
+                $WhereBlock = { ($_.PSChildName -match '^{[A-Z0-9]{8}-([A-Z0-9]{4}-){3}[A-Z0-9]{12}}$') -and ($_.GetValue('DisplayName') -like "$Name*") }
+            } else {
+                $WhereBlock = { ($_.PSChildName -match '^{[A-Z0-9]{8}-([A-Z0-9]{4}-){3}[A-Z0-9]{12}}$') -and ($_.GetValue('DisplayName')) }
+            }
+            $gciParams = @{
+                Path        = $UninstallKey
+                ErrorAction = 'SilentlyContinue'
+            }
+            $selectProperties = @(
+                @{n='Name'; e={$_.GetValue('DisplayName')}},
+                @{n='GUID'; e={$_.PSChildName}},
+                @{n='Version'; e={$_.GetValue('DisplayVersion')}},
+                @{n='Uninstall'; e={$_.GetValue('UninstallString')}}
+            )
+            Get-ChildItem @gciParams | Where $WhereBlock | Select-Object -Property $selectProperties
+        }
+    }
+}
 ##*========================================================================
 ##* VARIABLE DECLARATION
 ##*========================================================================
@@ -61,31 +107,38 @@ Catch{
 
 # PRE INSTALL
 #================
+
 $outputPath = Join-Path $LocalPath -ChildPath $Installer
 
 If( ($SourceType -eq 'Blob') -and $BlobURI -and $SaSKey){
     #Download via URI using SAS
-    Write-YaCMLogEntry -Message ('Downloading {1} from Blob [{0}]' -f "$BlobUri",$Label) -Passthru
+    Write-YaCMLogEntry -Message ('Downloading {1} from Blob [{0}]' -f "$BlobUri",$ProductName) -Passthru
     (New-Object System.Net.WebClient).DownloadFile("$BlobUri$SasKey", $outputPath)
 }
 ElseIf(($SourceType -eq 'SMBShare') -and ($SharePath)){
-    Write-YaCMLogEntry -Message ('Downloading {1} from share [{0}]' -f "$SharePath",$Label) -Passthru
+    Write-YaCMLogEntry -Message ('Downloading {1} from share [{0}]' -f "$SharePath",$ProductName) -Passthru
     Copy-Item $SharePath -Destination $outputPath -Force
 }
 Else{
-    Write-YaCMLogEntry -Message ('Downloading {1} from URL [{0}]' -f $InternetURI,$Label) -Passthru
+    Write-YaCMLogEntry -Message ('Downloading {1} from URL [{0}]' -f $InternetURI,$ProductName) -Passthru
     Invoke-WebRequest -Uri $InternetURI -OutFile $outputPath
 }
 
-#uninstall any existing OneDrive per-user installations
-Try{
+$Onedrive = Get-InstalledSoftware | Where Name -eq $ProductName
+If($OneDrive){
+    #uninstall any existing OneDrive per-user installations
     Write-YaCMLogEntry -Message ('Running Command: Start-Process -FilePath "{0}" -ArgumentList ""/uninstall"" -Wait -Passthru -WindowStyle Hidden' -f $outputPath,$InstallArguments) -Passthru
     $Result = Start-Process -FilePath $outputPath -ArgumentList "/uninstall" -Wait -Passthru -WindowStyle Hidden
+
+
+    #get results and see if they are valid
+    If($Result.ExitCode -notin $ValidExitCodes){
+        Write-YaCMLogEntry -Message ('Unable to uninstall {1}. {0}' -f $Result.ExitCode,$Installer) -Severity 3 -Passthru
+        Return $Result.ExitCode
+    }
 }
-Catch{
-    Write-YaCMLogEntry -Message ('Unable to uninstall {0}. {1}' -f $Installer,$_.Exception.message) -Severity 3 -Passthru
-    Break
-}
+
+
 # INSTALL
 #================
 #set the AllUsersInstall registry value:
@@ -93,14 +146,15 @@ If($AVDScenario){
     Set-LocalPolicySetting -RegPath 'HKLM:\Software\Microsoft\OneDrive' -Name "AllUsersInstall" -Type DWord -Value 1
 }
 #install OneDrive in per-machine mode:
-Try{
-    Write-YaCMLogEntry -Message ('Running Command: Start-Process -FilePath "{0}" -ArgumentList "{1}" -Wait -Passthru -WindowStyle Hidden' -f $outputPath,$InstallArguments) -Passthru
-    $Result = Start-Process -FilePath $outputPath -ArgumentList $InstallArguments -Wait -Passthru -WindowStyle Hidden
+Write-YaCMLogEntry -Message ('Running Command: Start-Process -FilePath "{0}" -ArgumentList "{1}" -Wait -Passthru -WindowStyle Hidden' -f $outputPath,$InstallArguments) -Passthru
+$Result = Start-Process -FilePath $outputPath -ArgumentList $InstallArguments -Wait -Passthru -WindowStyle Hidden
+
+#get results and see if they are valid
+If($Result.ExitCode -notin $ValidExitCodes){
+    Write-YaCMLogEntry -Message ('Unable to install {1}. {0}' -f $Result.ExitCode,$ProductName) -Severity 3 -Passthru
+    Return $Result.ExitCode
 }
-Catch{
-    Write-YaCMLogEntry -Message ('Unable to uninstall {0}. {1}' -f $Installer,$_.Exception.message) -Severity 3 -Passthru
-    Break
-}
+
 # POST-INSTALL
 #================
 #configure OneDrive to start at sign in for all users:
@@ -116,4 +170,4 @@ If($TenantID){
 
 #Cleanup and Complete
 Remove-Item $Localpath -Force -Recurse -ErrorAction SilentlyContinue | Out-Null
-Write-YaCMLogEntry -Message ('Completed {0} install' -f $Label) -Passthru
+Write-YaCMLogEntry -Message ('Completed {0} install' -f $ProductName) -Passthru

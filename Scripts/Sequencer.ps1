@@ -379,10 +379,15 @@ Function ConvertFrom-CustomSequence{
     If($SequenceData.type -eq "Module"){
         $InlineCommands = @()
         Foreach($Repo in $SequenceData.trustedRepos | Select -Unique){
-            $InlineCommands += "Set-PSRepository -Name '$Repo' -InstallationPolicy Trusted"
+            $InlineCommands += @(
+                "Set-PSRepository -Name '$Repo' -InstallationPolicy Trusted",
+                "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12",
+                "Install-PackageProvider -Name Nuget -Force"
+            )
         }
         $Modules = ($SequenceData.modules | Select -Unique) -Join ','
         $InlineCommands += @(
+
             "Install-Module -Name $Modules -Force",
             "Import-Module -Name $Modules -Force"
         )

@@ -16,10 +16,10 @@ Param(
 #=======================================================
 # VARIABLES
 #=======================================================
-$Label = 'Fslogix'
+$ProductName = 'Microsoft FSLogix Apps'
 $LocalPath = "$env:Windir\AIB\apps\fslogix"
 $Installer = 'FSLogixAppsSetup.exe'
-
+$ValidExitCodes = @(0,3010)
 $ErrorActionPreference = "Stop"
 ##*=============================================
 ##* INSTALL MODULES
@@ -61,34 +61,35 @@ Catch{
 
 # Download FSlogix
 Try{
-    Write-YaCMLogEntry -Message ('Downloading {1} from URL [{0}]' -f $InternetURI,$Label) -Passthru
+    Write-YaCMLogEntry -Message ('Downloading {1} from URL [{0}]' -f $InternetURI,$ProductName) -Passthru
     $Null = $InternetURI -match '\d+$'
     $LinkID = $Matches[0]
     Invoke-MsftLinkDownload -LinkID $LinkID -DestPath $Localpath -Extract -Cleanup
 }
 Catch{
-    Write-YaCMLogEntry -Message ('Unable to download {1)}. {0}' -f $_.Exception.message,$Label) -Severity 3 -Passthru
+    Write-YaCMLogEntry -Message ('Unable to download {1)}. {0}' -f $_.Exception.message,$ProductName) -Severity 3 -Passthru
     Break
 }
 
 
 #prep device for fslogix
-Write-YaCMLogEntry -Message ('Copy {1} policy template files to [{0}]' -f "$env:Windir\PolicyDefinitions",$Label) -Passthru
+Write-YaCMLogEntry -Message ('Copy {1} policy template files to [{0}]' -f "$env:Windir\PolicyDefinitions",$ProductName) -Passthru
 Copy-Item "$LocalPath\fslogix.adml" "$env:Windir\PolicyDefinitions\en-US" -ErrorAction SilentlyContinue -Force
 Copy-Item "$LocalPath\fslogix.admx" "$env:Windir\PolicyDefinitions" -ErrorAction SilentlyContinue -Force
 
 
 # FSLogix Install
-Try{
-    $InstallExecutable = "$LocalPath\x64\Release\$Installer"
-    $InstallArguments = "/install /quiet"
-    Write-YaCMLogEntry -Message ('Running Command: Start-Process -FilePath "{0}" -ArgumentList "{1}" -Wait -Passthru -WindowStyle Hidden' -f $InstallExecutable,$InstallArguments) -Passthru
-    $Result = Start-Process -FilePath $InstallExecutable -ArgumentList $InstallArguments -Wait -Passthru -WindowStyle Hidden
+$InstallExecutable = "$LocalPath\x64\Release\$Installer"
+$InstallArguments = "/install /quiet"
+Write-YaCMLogEntry -Message ('Running Command: Start-Process -FilePath "{0}" -ArgumentList "{1}" -Wait -Passthru -WindowStyle Hidden' -f $InstallExecutable,$InstallArguments) -Passthru
+$Result = Start-Process -FilePath $InstallExecutable -ArgumentList $InstallArguments -Wait -Passthru -WindowStyle Hidden
+#get results and see if they are valid
+If($Result.ExitCode -notin $ValidExitCodes){
+    Write-YaCMLogEntry -Message ('Unable to install {1}. {0}' -f $Result.ExitCode,$ProductName) -Severity 3 -Passthru
+    Return $Result.ExitCode
 }
-Catch{
-    Write-YaCMLogEntry -Message ('Unable to install {1}. {0}' -f $Result.ExitCode,$Label) -Severity 3 -Passthru
-    Break
-}
+
+
 
 # Get FSLogix App masking rules
 $FSLogixInstallPath = "${Env:ProgramFiles}\FSLogix\Apps\Rules"
@@ -100,21 +101,21 @@ Foreach($Rule in $AppMaskingRulesFilePath)
 
     If($Rule -match 'http'){
         Try{
-            Write-YaCMLogEntry -Message ('Downloading {2} app rule file [{0}] to [{1}]' -f $File,$FSLogixInstallPath,$Label) -Passthru
-            Invoke-WebRequest -Uri "$Rule" -OutFile "$FSLogixInstallPath\$File" -UseBasicParsing -Verbose
+            Write-YaCMLogEntry -Message ('Downloading {2} app rule file [{0}] to [{1}]' -f $File,$FSLogixInstallPath,$ProductName) -Passthru
+            Invoke-WebRequest -Uri "$Rule" -OutFile "$FSLogixInstallPath\$File" -UseBasicParsing
         }
         Catch{
-            Write-YaCMLogEntry -Message ('Unable to download {1} rule file. {0}' -f $_.Exception.message,$Label) -Severity 3 -Passthru
+            Write-YaCMLogEntry -Message ('Unable to download {1} rule file. {0}' -f $_.Exception.message,$ProductName) -Severity 2 -Passthru
             Break
         }
     }
     ElseIf($Rule -match '\\\\'){
-        Write-YaCMLogEntry -Message ('Copy {2} app rule zipped file [{0}] to [{1}]' -f $File,$FSLogixInstallPath,$Label) -Passthru
+        Write-YaCMLogEntry -Message ('Copy {2} app rule zipped file [{0}] to [{1}]' -f $File,$FSLogixInstallPath,$ProductName) -Passthru
         Copy-Item "$Rule" "$FSLogixInstallPath" -ErrorAction SilentlyContinue -Force
     }
 
     If([System.IO.Path]::GetExtension($File) -eq '.zip'){
-        Expand-Archive -LiteralPath "$FSLogixInstallPath\$File" -DestinationPath $FSLogixInstallPath -Force -Verbose
+        Expand-Archive -LiteralPath "$FSLogixInstallPath\$File" -DestinationPath $FSLogixInstallPath -Force
         Remove-Item "$FSLogixInstallPath\$File" -Force -ErrorAction SilentlyContinue
     }
 }
@@ -133,18 +134,18 @@ Foreach($Group in $FslogixGroups){
 }
 
 # FSLogix Local Policy Profile Settings
-Write-YaCMLogEntry -Message ('Configure {0} Profile Settings' -f $Label) -Passthru
+Write-YaCMLogEntry -Message ('Configure {0} Profile Settings' -f $ProductName) -Passthru
 #Optimize Fslogix
-Set-LocalPolicySetting -RegPath HKLM:\Software\FSLogix\Profiles -Name "Enabled" -Type DWord -Value 1 -Force -verbose -debug
-Set-LocalPolicySetting -RegPath HKLM:\Software\FSLogix\Profiles -Name "SizeInMBs" -Type DWord -Value "30000" -Force -verbose -debug
-Set-LocalPolicySetting -RegPath HKLM:\Software\FSLogix\Profiles -Name "FlipFlopProfileDirectoryName" -Type DWord -Value 1 -Force -verbose -debug
+Set-LocalPolicySetting -RegPath HKLM:\Software\FSLogix\Profiles -Name "Enabled" -Type DWord -Value 1 -Force
+Set-LocalPolicySetting -RegPath HKLM:\Software\FSLogix\Profiles -Name "SizeInMBs" -Type DWord -Value "30000" -Force
+Set-LocalPolicySetting -RegPath HKLM:\Software\FSLogix\Profiles -Name "FlipFlopProfileDirectoryName" -Type DWord -Value 1 -Force
 #Set-LocalPolicySetting -RegPath HKLM:\Software\FSLogix\Profiles -Name "SIDDirNamePattern" -Type String -Value "%username%%sid%" -Force
 #Set-LocalPolicySetting -RegPath HKLM:\Software\FSLogix\Profiles -Name "SIDDirNameMatch" -Type String -Value "%username%%sid%" -Force
-Set-LocalPolicySetting -RegPath HKLM:\Software\FSLogix\Profiles -Name "DeleteLocalProfileWhenVHDShouldApply" -Type DWord -Value 1 -Force -verbose -debug
-Set-LocalPolicySetting -RegPath HKLM:\Software\FSLogix\Profiles -Name "DeleteProfileOnLogoff" -Type DWord -Value 1 -Force -verbose -debug
-Set-LocalPolicySetting -RegPath HKLM:\Software\FSLogix\Profiles -Name "VolumeType" -Type String -Value "vhdx" -Force -verbose -debug
-Set-LocalPolicySetting -RegPath HKLM:\Software\FSLogix\Profiles -Name "RoamSearch" -Type DWord -Value 0 -Force -verbose -debug
-Set-LocalPolicySetting -RegPath HKLM:\Software\FSLogix\Profiles -Name "OutlookCacheMode" -Type DWord -Value 1 -Force -verbose -debug
+Set-LocalPolicySetting -RegPath HKLM:\Software\FSLogix\Profiles -Name "DeleteLocalProfileWhenVHDShouldApply" -Type DWord -Value 1 -Force
+Set-LocalPolicySetting -RegPath HKLM:\Software\FSLogix\Profiles -Name "DeleteProfileOnLogoff" -Type DWord -Value 1 -Force
+Set-LocalPolicySetting -RegPath HKLM:\Software\FSLogix\Profiles -Name "VolumeType" -Type String -Value "vhdx" -Force
+Set-LocalPolicySetting -RegPath HKLM:\Software\FSLogix\Profiles -Name "RoamSearch" -Type DWord -Value 0 -Force
+Set-LocalPolicySetting -RegPath HKLM:\Software\FSLogix\Profiles -Name "OutlookCacheMode" -Type DWord -Value 1 -Force
 
 #Enable and set profile
 If($ProfilePath -match 'http'){
@@ -164,4 +165,4 @@ If($RedirectionPath){
 
 #Cleanup and Complete
 Remove-Item $LocalPath -Force -Recurse -ErrorAction SilentlyContinue | Out-Null
-Write-YaCMLogEntry -Message ('Completed {0} install' -f $Label) -Passthru
+Write-YaCMLogEntry -Message ('Completed {0} install' -f $ProductName) -Passthru

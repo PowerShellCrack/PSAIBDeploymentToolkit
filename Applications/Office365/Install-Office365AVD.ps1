@@ -17,11 +17,12 @@ Param(
 # CONSTANT VARIABLES
 #=======================================================
 $ErrorActionPreference = "Stop"
-$Label = 'Office 365'
+$ProductName = 'Microsoft 365 Apps for enterprise - en-us'
 $Localpath = "$env:Windir\AIB\apps\office"
 $Installer = "setup.exe"
 $InstallArguments = "/configure $Localpath\configuration.xml"
 $AVDScenario = $True
+$ValidExitCodes = @(0,3010)
 ##*=============================================
 ##* INSTALL MODULES
 ##*=============================================
@@ -105,15 +106,15 @@ $xml | Out-file "$Localpath\configuration.xml" -Force
 
 If( ($SourceType -eq 'Blob') -and $BlobURI -and $SaSKey){
     #Download via URI using SAS
-    Write-YaCMLogEntry -Message ('Downloading {1} from Blob [{0}]' -f "$BlobUri",$Label) -Passthru
+    Write-YaCMLogEntry -Message ('Downloading {1} from Blob [{0}]' -f "$BlobUri",$ProductName) -Passthru
     (New-Object System.Net.WebClient).DownloadFile("$BlobUri$SasKey", "$Localpath\$Installer")
 }
 ElseIf(($SourceType -eq 'SMBShare') -and ($SharePath)){
-    Write-YaCMLogEntry -Message ('Downloading {1} from share [{0}]' -f "$SharePath",$Label) -Passthru
+    Write-YaCMLogEntry -Message ('Downloading {1} from share [{0}]' -f "$SharePath",$ProductName) -Passthru
     Copy-Item $SharePath -Destination "$Localpath\$Installer" -Force
 }
 Else{
-    Write-YaCMLogEntry -Message ('Downloading {1} from URL [{0}]' -f $InternetURI,$Label) -Passthru
+    Write-YaCMLogEntry -Message ('Downloading {1} from URL [{0}]' -f $InternetURI,$ProductName) -Passthru
     $Null = $InternetURI -match '\d+$'
     $LinkID = $Matches[0]
     #Get-MsftLink -LinkID $LinkID
@@ -123,14 +124,15 @@ Else{
 # INSTALL
 #================
 #Office Install
-try{
-    Write-YaCMLogEntry -Message ('Running Command: Start-Process -FilePath "{0}" -ArgumentList "{1}" -Wait -Passthru -WindowStyle Hidden' -f $Installer ,$InstallArguments) -Passthru
-    $Result = Start-Process -FilePath "$Localpath\$Installer" -ArgumentList $InstallArguments -Wait -Passthru -WindowStyle Hidden
+Write-YaCMLogEntry -Message ('Running Command: Start-Process -FilePath "{0}" -ArgumentList "{1}" -Wait -Passthru -WindowStyle Hidden' -f "$Localpath\$Installer",$InstallArguments) -Passthru
+$Result = Start-Process -FilePath "$Localpath\$Installer" -ArgumentList $InstallArguments -Wait -Passthru -WindowStyle Hidden
+
+#get results and see if they are valid
+If($Result.ExitCode -notin $ValidExitCodes){
+    Write-YaCMLogEntry -Message ('Unable to install {1}. {0}' -f $Result.ExitCode,$ProductName) -Severity 3 -Passthru
+    Return $Result.ExitCode
 }
-Catch{
-    Write-YaCMLogEntry -Message ('Unable to install {1}. {0}' -f $Result.ExitCode,$Label) -Severity 3 -Passthru
-    Break
-}
+
 
 # POST INSTALL
 #================
@@ -143,10 +145,10 @@ If($AVDScenario){
     Set-LocalPolicyUserSetting -RegPath 'HCKU:\software\policies\microsoft\office\16.0\outlook\cached mode' -Name CalendarSyncWindowSettingMonths -Type DWord -Value 1 -Force
 
     # Set the Office Update UI behavior.
-    Write-YaCMLogEntry -Message ("Set the {0} Update UI behavior" -f $Label) -Passthru
+    Write-YaCMLogEntry -Message ("Set the {0} Update UI behavior" -f $ProductName) -Passthru
     Set-LocalPolicySetting -RegPath 'HKLM:\SOFTWARE\Policies\Microsoft\office\16.0\common\officeupdate' -Name hideupdatenotifications -Type DWord -Value 1 -Force
     Set-LocalPolicySetting -RegPath 'HKLM:\SOFTWARE\Policies\Microsoft\office\16.0\common\officeupdate' -Name hideenabledisableupdates -Type DWord -Value 1 -Force
 }
 #Cleanup and Complete
 Remove-Item $Localpath -Force -Recurse -ErrorAction SilentlyContinue | Out-Null
-Write-YaCMLogEntry -Message ('Completed {0} install' -f $Label) -Passthru
+Write-YaCMLogEntry -Message ('Completed {0} install' -f $ProductName) -Passthru

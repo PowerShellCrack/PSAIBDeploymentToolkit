@@ -16,7 +16,7 @@ Param(
 # CONSTANT VARIABLES
 #=======================================================
 $ErrorActionPreference = "Stop"
-$Label = 'LGPO'
+$ProductName = 'LGPO'
 $Localpath = "$Env:ALLUSERSPROFILE\LGPO"
 $Installer = 'LGPO.zip'
 ##*=============================================
@@ -53,19 +53,19 @@ if((Test-Path $Localpath) -eq $false) {
 # Download LGPO
 If( ($SourceType -eq 'Blob') -and $BlobURI -and $SaSKey){
     #Download via URI using SAS
-    Write-YaCMLogEntry -Message ('Downloading {1} from Blob [{0}]' -f "$BlobUri",$Label) -Passthru
+    Write-YaCMLogEntry -Message ('Downloading {1} from Blob [{0}]' -f "$BlobUri",$ProductName) -Passthru
     (New-Object System.Net.WebClient).DownloadFile("$BlobUri$SasKey", "$Localpath\$Installer")
 }
 ElseIf(($SourceType -eq 'SMBShare') -and ($SharePath)){
-    Write-YaCMLogEntry -Message ('Downloading {1} from share [{0}]' -f "$SharePath",$Label) -Passthru
+    Write-YaCMLogEntry -Message ('Downloading {1} from share [{0}]' -f "$SharePath",$ProductName) -Passthru
     Copy-Item $SharePath -Destination "$Localpath\$Installer" -Force
 }
 Else{
-    Write-YaCMLogEntry -Message ('Downloading {1} from URL [{0}]' -f $InternetURI,$Label) -Passthru
+    Write-YaCMLogEntry -Message ('Downloading {1} from URL [{0}]' -f $InternetURI,$ProductName) -Passthru
     $Null = $InternetURI -match '\d+$'
     $LinkID = $Matches[0]
     #Get-MsftLink -LinkID $LinkID
-    Invoke-MsftLinkDownload -LinkID $LinkID -DestPath "$Localpath" -Extract -Cleanup
+    Invoke-MsftLinkDownload -LinkID $LinkID -DestPath "$Localpath" -Filter $ProductName -Extract -Cleanup
 }
 
 
@@ -87,12 +87,12 @@ try{
 }
 
 try{
-    Write-YaCMLogEntry -Message ('Installing {0} module' -f $Label) -Passthru
+    Write-YaCMLogEntry -Message ('Installing {0} module' -f $ProductName) -Passthru
     Install-Module LGPO -Force -ErrorAction Stop
 }Catch{
-    Write-YaCMLogEntry -Message ('Unable to install {1} module. {0}' -f $_.Exception.message,$Label) -Severity 3
+    Write-YaCMLogEntry -Message ('Unable to install {1} module. {0}' -f $_.Exception.message,$ProductName) -Severity 3
     Break
 }
 
 
-Write-YaCMLogEntry -Message ('Completed {0} install' -f $Label) -Passthru
+Write-YaCMLogEntry -Message ('Completed {0} install' -f $ProductName) -Passthru
