@@ -4,14 +4,18 @@ The original idea was to take a standard On-premise MDT _build and capture_ depl
 
 # THIS IS A WORK IN PROGRESS
 
-Image|Included|Tested|Works
---|--|--|--
-Win10avdSimpleImage| Branding, Updates |No|No
-Win10avdBaselineImage |||No|No
-Win10avdHardenedImage ||No|No
-Win10avdMarketImage |  | Yes | Yes
-Win10avdLatestUpdates | Updates | Yes | Yes
-Win10avdO365Image | Office 365, Updates | Yes | Yes
+
+These are the images i have planned or have tested with this toolkit and the results
+
+Image|Included|Tested|Results|Comments
+--|--|--|--|--
+Win10avdMarketImage | 21h2 | Yes | **Success** | Gen2 Marketplace VM no updates. Just to see if AIB worked
+Win10avdLatestUpdates | 21h2, Updates | Yes | **Success** | Gen2 Marketplace VM with updates set to run.
+Win10avdO365Image | 21h2, Office 365, Updates | Yes | **Success** | Gen2 Marketplace VM with M365 apps and updates set to run.
+Win10avdSimpleImage| 21h2, Branding, Updates |Yes|**Success** | Gen2 Marketplace VM with branding script (wallpaper and lockscreen) and updates set to run.
+Win10avdBaselineImage | 21h2, Office 365, Teams, Fslogix, Onedrive, Updates, Optimizations, VM Preparation | Yes | Failed| Gen2 Marketplace VM; added scripts to install Microsoft 365 apps to latest version in Multisession mode with policy configured
+Win10avdHardenedImage | 21h2, Office 365, Teams, Fslogix, Onedrive, Updates, Optimizations, VM Preparation, STIGS | No | | Gen2 Marketplace VM; added scripts to install Microsoft 365 apps to latest version in Multisession mode with STIG policy configured
+
 
 ## TODOs
 
