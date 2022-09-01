@@ -1,5 +1,4 @@
 Chkdsk /f
-Shutdown /r /f /t 03
 sfc /scannow
 DISM /online /Cleanup-Image /StartComponentCleanup
 DISM /online /Cleanup-Image /StartComponentCleanup /ResetBase
