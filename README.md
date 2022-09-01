@@ -16,7 +16,8 @@ Win10avdO365Image | Office 365, Updates | Yes | Yes
 ## TODOs
 
 - Looking into developing a User Interface to allow easier configurations.
-- Build a script to convert MDT environment to AIB environment. Basically to copy the Applications,templates,and certain scripts to a blob storage. Structure should look be in a format like:
+- Looking at building language pack support using the  _Packages_ folder (https://docs.microsoft.com/en-us/azure/virtual-desktop/language-packs)
+- Build a script to convert MDT environment to AIB environment. Basically to copy the Applications,templates,and scripts to a blob storage. Structure should look be in a format like:
 
   eg. **\<type\>-\<productname\>-\<version | latest\>**
 
@@ -193,6 +194,8 @@ When ran with sequencer.ps1, it will produce the needed customizations for azure
 ## Reference
 
 - https://docs.microsoft.com/en-us/azure/virtual-machines/linux/image-builder-json?tabs=azure-powershell
+- https://docs.microsoft.com/en-us/azure/virtual-desktop/set-up-customize-master-image
+- https://docs.microsoft.com/en-us/azure/virtual-desktop/set-up-golden-image
 
 # DISCLAIMER
 > Even though I have tested this to the extend that I could, I want to ensure your aware of Microsoft’s position on developing scripts.

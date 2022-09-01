@@ -1,6 +1,7 @@
 ﻿<#
 .LINK
 https://www.microsoft.com/en-us/download/details.aspx?id=55319
+https://docs.microsoft.com/en-us/azure/virtual-desktop/install-office-on-wvd-master-image
 #>
 Param(
     [ValidateSet('Internet','Blob','SMBShare')]
