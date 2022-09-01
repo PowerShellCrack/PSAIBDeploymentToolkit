@@ -22,11 +22,12 @@
 #>
 
 param(
-    [switch]$DefaultAssoc = "$PSscriptRoot\DefaultAppAssociations.xml",
+    $SourceRootPath = "$Env:Windir\AIB\Customizations"
+    [string]$DefaultAssocFile = "DefaultAppAssociations.xml",
+    [string]$LockscreenPath = "$env:Windir\Web\DTOLAB\Lockscreen",
+    [string]$WallpaperPath = "$env:Windir\Web\DTOLAB\Wallpaper",
     [switch]$StartLayout,
     [switch]$ForceAvatar = $false,
-    [string]$LockscreenPath = "$env:Windir\Web\DTOLAB\Lockscreen",
-    [string]$WallpaperPath = "$env:Windir\Web\DTOLAB\Wallpaper"
 )
 
 ##*=============================================
@@ -58,16 +59,16 @@ icacls "$env:windir\Web\Screen\*" /grant Administrators:f /T
 ##* Takeownership and replace Screen Folder
 #takeown -Force "$env:windir\Resources\Themes" /R -Value Y
 #icacls "$env:windir\Resources\Themes\*" /grant Administrators:f /T
-Copy-Item "$PSscriptRoot\aero.theme" -Destination '$env:windir\Resources\Themes\aero.theme' -Force -ErrorAction SilentlyContinue | Out-Null
+Copy-Item "$SourceRootPath\aero.theme" -Destination '$env:windir\Resources\Themes\aero.theme' -Force -ErrorAction SilentlyContinue | Out-Null
 
 New-Item -Path $LockscreenPath -ItemType Directory -ErrorAction SilentlyContinue | Out-Null
 New-Item -Path $WallpaperPath -ItemType Directory -ErrorAction SilentlyContinue | Out-Null
-Copy-Item "$PSscriptRoot\Lockscreen.jpg" -Destination $LockscreenPath -Force -ErrorAction SilentlyContinue | Out-Null
-Copy-Item "$PSscriptRoot\Wallpaper.jpg" -Destination $WallpaperPath -Force -ErrorAction SilentlyContinue | Out-Null
+Copy-Item "$SourceRootPath\Lockscreen.jpg" -Destination $LockscreenPath -Force -ErrorAction SilentlyContinue | Out-Null
+Copy-Item "$SourceRootPath\Wallpaper.jpg" -Destination $WallpaperPath -Force -ErrorAction SilentlyContinue | Out-Null
 
 
 If($ForceAvatar){
-    $Avatars = Get-ChildItem $PSscriptRoot -filter *.png | Where{$_.Name -like 'profile*'}
+    $Avatars = Get-ChildItem $SourceRootPath -filter *.png | Where{$_.Name -like 'profile*'}
     If($Avatars){
         Foreach($Avatar in $Avatars){
             Try{

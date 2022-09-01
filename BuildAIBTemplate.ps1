@@ -375,7 +375,7 @@ If($TemplateConfigs.customSequence.count -gt 0){
     #fix the \u0027 issue and save file
     ([regex]'(?i)\\u([0-9a-h]{4})').Replace($NewJson, {param($Match) "$([char][int64]"0x$($Match.Groups[1].Value)")"}) | Set-Content -Path $templateFilePath -Force
 }
-
+Write-Host ("Template generated, exported file is located: {0}" -f  $templateFilePath) -ForegroundColor Yellow
 
 # Remove the template
 #=======================================================

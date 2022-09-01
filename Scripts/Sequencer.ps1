@@ -60,7 +60,8 @@ Function ConvertTo-AIBCustomization{
                             $object | Add-Member -MemberType NoteProperty -Name 'type' -Value "File"
                             $object | Add-Member -MemberType NoteProperty -Name 'name' -Value ("Copying " + $file)
                             $object | Add-Member -MemberType NoteProperty -Name 'sourceUri' -Value ('https://' + $BlobURL + '/application-' + $CustomData.workingDirectory.ToLower()  + '/' + $file)
-                            $object | Add-Member -MemberType NoteProperty -Name 'destination' -Value ($env:Temp + '\' + $file)
+                            $object | Add-Member -MemberType NoteProperty -Name 'destination' -Value ($FileCopyDest + '\' + $CustomData.workingDirectory + '\' + $file)
+                             #get local copy to determine hash
                             If( (Test-Path ('.\Applications\' + $CustomData.workingDirectory + '\' + $file)) -and !$SkipChecksum){
                                 $CheckSum = Get-FileHash ('.\Applications\' + $CustomData.workingDirectory + '\' + $file) | Select -ExpandProperty Hash
                                 $object | Add-Member -MemberType NoteProperty -Name 'sha256Checksum' -Value $CheckSum
@@ -71,14 +72,15 @@ Function ConvertTo-AIBCustomization{
 
                     #AIB does nto support arguments, so the process must be broken down into copy file and inline script call
                     If($CustomData.arguments.Length -gt 0){
-                        $Arguments = $CustomData.arguments -replace '<destination>',$env:Temp
+                        $Arguments = $CustomData.arguments -replace '<destination>',($FileCopyDest + '\' + $CustomData.workingDirectory)
 
                         #Step 1: Gen File copy for ps1 file
                         $object = New-Object -TypeName PSObject
                         $object | Add-Member -MemberType NoteProperty -Name 'type' -Value "File"
                         $object | Add-Member -MemberType NoteProperty -Name 'name' -Value ("Copying " + $CustomData.workingDirectory)
                         $object | Add-Member -MemberType NoteProperty -Name 'sourceUri' -Value ('https://' + $BlobURL + '/application-' + $CustomData.workingDirectory.ToLower()  + '/' + $CustomData.executable)
-                        $object | Add-Member -MemberType NoteProperty -Name 'destination' -Value ($env:Temp + '\' + $CustomData.executable)
+                        $object | Add-Member -MemberType NoteProperty -Name 'destination' -Value ($FileCopyDest + '\' + $CustomData.workingDirectory + '\' + $CustomData.executable)
+                        #get local copy to determine hash
                         If( (Test-Path ('.\Applications\' + $CustomData.workingDirectory + '\' + $CustomData.executable)) -and !$SkipChecksum){
                             $CheckSum = Get-FileHash ('.\Applications\' + $CustomData.workingDirectory + '\' + $CustomData.executable) | Select -ExpandProperty Hash
                             $object | Add-Member -MemberType NoteProperty -Name 'sha256Checksum' -Value $CheckSum
@@ -87,7 +89,7 @@ Function ConvertTo-AIBCustomization{
 
                         #Step 2: Gen inline with argument for ps1 call
                         $InlineCommands = @(
-                            "& $env:Temp\$($CustomData.executable) $Arguments"
+                            "& $FileCopyDest\$($CustomData.workingDirectory)\$($CustomData.executable) $Arguments"
                         )
                         $object = New-Object -TypeName PSObject
                         $object | Add-Member -MemberType NoteProperty -Name 'type' -Value "PowerShell"
@@ -103,7 +105,7 @@ Function ConvertTo-AIBCustomization{
                         $object | Add-Member -MemberType NoteProperty -Name 'runElevated' -Value $True
                         $object | Add-Member -MemberType NoteProperty -Name 'runAsSystem' -Value $True
                         $object | Add-Member -MemberType NoteProperty -Name 'scriptUri' -Value ('https://' + $BlobURL + '/application-' + $CustomData.workingDirectory.ToLower() + '/' + $CustomData.executable)
-                        #grab hash first
+                        #get local copy to determine hash
                         If( (Test-Path ('.\Applications\' + $CustomData.workingDirectory + '\' + $CustomData.executable)) -and !$SkipChecksum){
                             $CheckSum = Get-FileHash ('.\Applications\' + $CustomData.workingDirectory + '\' + $CustomData.executable) | Select -ExpandProperty Hash
                             $object | Add-Member -MemberType NoteProperty -Name 'sha256Checksum' -Value $CheckSum
@@ -120,7 +122,7 @@ Function ConvertTo-AIBCustomization{
                 'exe$|msi$' {
                     #Step 1. Gen app working directory creation
                     $InlineCommands = @(
-                        "New-Item '$FileCopyDest\\$($CustomData.workingDirectory)' -ItemType Directory -ErrorAction SilentlyContinue"
+                        "New-Item '$FileCopyDest\$($CustomData.workingDirectory)' -ItemType Directory -ErrorAction SilentlyContinue"
                     )
                     $object = New-Object -TypeName PSObject
                     $object | Add-Member -MemberType NoteProperty -Name 'type' -Value "PowerShell"
@@ -138,7 +140,8 @@ Function ConvertTo-AIBCustomization{
                             $object | Add-Member -MemberType NoteProperty -Name 'type' -Value "File"
                             $object | Add-Member -MemberType NoteProperty -Name 'name' -Value ("Copying " + $file)
                             $object | Add-Member -MemberType NoteProperty -Name 'sourceUri' -Value ('https://' + $BlobURL + '/application-' + $CustomData.workingDirectory.ToLower()  + '/' + $file)
-                            $object | Add-Member -MemberType NoteProperty -Name 'destination' -Value ($FileCopyDest +'\' + $CustomData.workingDirectory + '\' + $file)
+                            $object | Add-Member -MemberType NoteProperty -Name 'destination' -Value ($FileCopyDest + '\' + $CustomData.workingDirectory + '\' + $file)
+                            #get local copy to determine hash
                             If( (Test-Path ('.\Applications\' + $CustomData.workingDirectory + '\' + $file)) -and !$SkipChecksum){
                                 $CheckSum = Get-FileHash ('.\Applications\' + $CustomData.workingDirectory + '\' + $file) | Select -ExpandProperty Hash
                                 $object | Add-Member -MemberType NoteProperty -Name 'sha256Checksum' -Value $CheckSum
@@ -153,6 +156,7 @@ Function ConvertTo-AIBCustomization{
                     $object | Add-Member -MemberType NoteProperty -Name 'name' -Value ("Copying " + $CustomData.workingDirectory)
                     $object | Add-Member -MemberType NoteProperty -Name 'sourceUri' -Value ('https://' + $BlobURL + '/application-' + $CustomData.workingDirectory.ToLower()  + '/' + $CustomData.executable)
                     $object | Add-Member -MemberType NoteProperty -Name 'destination' -Value ($FileCopyDest + '\' + $CustomData.workingDirectory + '\' + $CustomData.executable)
+                    #get local copy to determine hash
                     If( (Test-Path ('.\Applications\' + $CustomData.workingDirectory + '\' + $CustomData.executable)) -and !$SkipChecksum){
                         $CheckSum = Get-FileHash ('.\Applications\' + $CustomData.workingDirectory + '\' + $CustomData.executable) | Select -ExpandProperty Hash
                         $object | Add-Member -MemberType NoteProperty -Name 'sha256Checksum' -Value $CheckSum
@@ -169,7 +173,7 @@ Function ConvertTo-AIBCustomization{
 
                     switch([System.IO.Path]::GetExtension($CustomData.executable) ){
                         '.exe' {$FilePath= ($FileCopyDest + '\' +  $CustomData.workingDirectory + '\' + $CustomData.executable)}
-                        '.msi' {$FilePath='C:\Windows\system32\msiexec.exe';$Arguments = "$FileCopyDest$\$($CustomData.workingDirectory)\$($CustomData.executable)" + ' ' + $Arguments}
+                        '.msi' {$FilePath='C:\Windows\system32\msiexec.exe';$Arguments = "$FileCopyDest\$($CustomData.workingDirectory)\$($CustomData.executable)" + ' ' + $Arguments}
                     }
                     If($CustomData.arguments.Length -gt 0){
                         $Arguments = $CustomData.arguments -replace '<destination>',$FileCopyDest
@@ -196,7 +200,7 @@ Function ConvertTo-AIBCustomization{
                 'zip$|cab$' {
                     #Step 1. Create app working directory
                     $InlineCommands = @(
-                        "New-Item '$FileCopyDest$\$($CustomData.workingDirectory)' -ItemType Directory -ErrorAction SilentlyContinue"
+                        "New-Item '$FileCopyDest\$($CustomData.workingDirectory)' -ItemType Directory -ErrorAction SilentlyContinue"
                     )
                     $object = New-Object -TypeName PSObject
                     $object | Add-Member -MemberType NoteProperty -Name 'type' -Value "PowerShell"
@@ -211,7 +215,7 @@ Function ConvertTo-AIBCustomization{
                     $object | Add-Member -MemberType NoteProperty -Name 'type' -Value "File"
                     $object | Add-Member -MemberType NoteProperty -Name 'name' -Value ("Copying " + $CustomData.workingDirectory)
                     $object | Add-Member -MemberType NoteProperty -Name 'sourceUri' -Value ('https://' + $BlobURL + '/application-' + $CustomData.workingDirectory.ToLower()  + '/' + $CustomData.executable)
-                    $object | Add-Member -MemberType NoteProperty -Name 'destination' -Value ("$FileCopyDest" + $CustomData.workingDirectory + '\' + $CustomData.executable)
+                    $object | Add-Member -MemberType NoteProperty -Name 'destination' -Value ($FileCopyDest + '\' + $CustomData.workingDirectory + '\' + $CustomData.executable)
                     If( (Test-Path ('.\Applications\' + $CustomData.workingDirectory + '\' + $CustomData.executable)) -and !$SkipChecksum){
                         $CheckSum = Get-FileHash ('.\Applications\' + $CustomData.workingDirectory + '\' + $CustomData.executable) | Select -ExpandProperty Hash
                         $object | Add-Member -MemberType NoteProperty -Name 'sha256Checksum' -Value $CheckSum
@@ -220,7 +224,7 @@ Function ConvertTo-AIBCustomization{
 
                     #Step 3. Extract file
                     $InlineCommands = @(
-                        "Expand-Archive -Path '$FileCopyDest$\$($CustomData.workingDirectory)\$($CustomData.executable)' -DestinationPath '$FileCopyDest$\$($CustomData.workingDirectory)' -Force"
+                        "Expand-Archive -Path '$FileCopyDest\$($CustomData.workingDirectory)\$($CustomData.executable)' -DestinationPath '$FileCopyDest\$($CustomData.workingDirectory)' -Force"
                     )
                     $object = New-Object -TypeName PSObject
                     $object | Add-Member -MemberType NoteProperty -Name 'type' -Value "PowerShell"
@@ -239,12 +243,12 @@ Function ConvertTo-AIBCustomization{
                     If($CustomData.arguments.Length -gt 0){
                         $Arguments = $CustomData.arguments -replace '<destination>',$FileCopyDest
                         $InlineCommands = @(
-                            "`$Result = Start-Process -FilePath '$FileCopyDest$\$($CustomData.workingDirectory)\$($CustomData.executable)' -ArgumentList '$Arguments' -Wait -PassThru"
+                            "`$Result = Start-Process -FilePath '$FileCopyDest\$($CustomData.workingDirectory)\$($CustomData.executable)' -ArgumentList '$Arguments' -Wait -PassThru"
                             "Return `$Result.ExitCode"
                         )
                     }Else{
                         $InlineCommands = @(
-                            "`$Result = Start-Process -FilePath '$FileCopyDest$\$($CustomData.workingDirectory)\$($CustomData.executable)' -Wait -PassThru",
+                            "`$Result = Start-Process -FilePath '$FileCopyDest\$($CustomData.workingDirectory)\$($CustomData.executable)' -Wait -PassThru",
                             "Return `$Result.ExitCode"
                         )
                     }
@@ -310,8 +314,7 @@ Function ConvertTo-AIBCustomization{
     #Step 5. Gen app working directory deletion
     If($Cleanup){
         $InlineCommands = @(
-            "Remove-Item -path '$FileCopyDest$\$($CustomData.workingDirectory)' -recurse -ErrorAction SilentlyContinue",
-            "Remove-Item -path '$env:temp\*' -ErrorAction SilentlyContinue"
+            "Remove-Item -path '$FileCopyDest\$($CustomData.workingDirectory)' -recurse -ErrorAction SilentlyContinue"
         )
         $object = New-Object -TypeName PSObject
         $object | Add-Member -MemberType NoteProperty -Name 'type' -Value "PowerShell"

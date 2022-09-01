@@ -64,6 +64,11 @@ If you are contributing or using the code. Please create a copy of the _Settings
 ```powershell
 .\BuildAIBTemplate.ps1 -Template Win10avdSimpleImage -ControlSetting Settings.json -BuildImage
 ```
+
+## Output
+
+There is a _Logs_ folder that will contain a dated transcript of the AIB sequence called and the json arm template generated.
+
 ## **aib.json** auto formatting
 
 There is an _aib.json_ (...kind of like the TS.xml in MDT. :grin:) file in each sequence is a custom format designed decide what template to use and to simplify the complex deployment of scripts & applications for AIB.
