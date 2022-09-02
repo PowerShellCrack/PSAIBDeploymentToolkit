@@ -15,7 +15,7 @@ Win10avdMarketImage |Gen2 Marketplace VM no updates. Just to see if AIB worked |
 Win10avdLatestUpdates | Gen2 Marketplace VM with updates set to run. | 21h2, Updates | Yes | **Success**|
 Win10avdO365Image | Gen2 Marketplace VM with M365 apps and updates set to run. | 21h2, Office 365, Updates | Yes | **Success**
 Win10avdSimpleImage | Gen2 Marketplace VM with branding script (wallpaper and lockscreen) and updates set to run.| 21h2, Branding, Updates |Yes|**Success**| Needs work on branding script
-Win10avdBaselineImage| Gen2 Marketplace VM; added scripts to install Microsoft 365 apps to latest version in Multisession mode with policy configured | 21h2, Office 365, Teams, Fslogix, Onedrive, Updates, Optimizations, VM Preparation | Yes | Failed | Some issues with application scripts and installer for modules; added PSGallery trust and Nuget update for anything PowerShell calls
+Win10avdBaselineImage| Gen2 Marketplace VM; added scripts to install Microsoft 365 apps to latest version in Multisession mode with policy configured | 21h2, Office 365, Teams, Fslogix, Onedrive, Updates, Optimizations, VM Preparation | Yes | Failed: Operation timed out | Some issues with application scripts and installer for modules; added PSGallery trust and Nuget update for anything PowerShell calls
 Win10avdHardenedImage| Gen2 Marketplace VM; added scripts to install Microsoft 365 apps to latest version in Multisession mode with STIG policy configured | 21h2, Office 365, Teams, Fslogix, Onedrive, Updates, Optimizations, VM Preparation, STIGS | No ||Working on STIG scripts
 
 

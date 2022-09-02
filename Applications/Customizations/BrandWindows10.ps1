@@ -22,12 +22,12 @@
 #>
 
 param(
-    $SourceRootPath = "$Env:Windir\AIB\Customizations"
+    $SourceRootPath = "$Env:Windir\AIB\Customizations",
     [string]$DefaultAssocFile = "DefaultAppAssociations.xml",
     [string]$LockscreenPath = "$env:Windir\Web\DTOLAB\Lockscreen",
     [string]$WallpaperPath = "$env:Windir\Web\DTOLAB\Wallpaper",
-    [switch]$StartLayout,
-    [switch]$ForceAvatar = $false,
+    [switch]$StartLayout = $false,
+    [switch]$ForceAvatar = $false
 )
 
 ##*=============================================
