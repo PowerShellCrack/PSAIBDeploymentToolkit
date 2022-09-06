@@ -14,8 +14,10 @@ Image|Description|Included|Tested|Results|Comments
 Win10avdMarketImage |Gen2 Marketplace VM no updates. Just to see if AIB worked | 21h2  | Yes | **Success** |
 Win10avdLatestUpdates | Gen2 Marketplace VM with updates set to run. | 21h2, Updates | Yes | **Success**|
 Win10avdO365Image | Gen2 Marketplace VM with M365 apps and updates set to run. | 21h2, Office 365, Updates | Yes | **Success**
+Win10avdTestImage | Gen2 Marketplace VM with two apps (Foxit and Notpadd++) and updates set to run.| 21h2, Foxit, Notpadd++, Updates |Yes|**Success**| 32min build time
 Win10avdSimpleImage | Gen2 Marketplace VM with branding script (wallpaper and lockscreen) and updates set to run.| 21h2, Branding, Updates |Yes|**Success**| Needs work on branding script
-Win10avdBaselineImage| Gen2 Marketplace VM; added scripts to install Microsoft 365 apps to latest version in Multisession mode with policy configured | 21h2, Office 365, Teams, Fslogix, Onedrive, Updates, Optimizations, VM Preparation | Yes | Failed: Operation timed out | Some issues with application scripts and installer for modules; added PSGallery trust and Nuget update for anything PowerShell calls
+Win10avdBaseImage| Gen2 Marketplace VM; added scripts to install Microsoft 365 apps to latest version in Multisession mode with policy configured | 21h2, Office 365, Teams, Fslogix, Onedrive, Updates, Optimizations, VM Preparation | Yes | Failed: Operation timed out | Some issues with application scripts and installer for modules; added PSGallery trust and Nuget update for anything PowerShell calls
+Win10avdBaselineImage| Gen2 Marketplace VM; added scripts to install Microsoft 365 apps to latest version in Multisession mode with policy configured, and baseline software | 21h2, Office 365, Teams, Fslogix, Onedrive, Adobe Acrobat DC, Laps, Microsoft News app, Updates, Optimizations, VM Preparation |  |
 Win10avdHardenedImage| Gen2 Marketplace VM; added scripts to install Microsoft 365 apps to latest version in Multisession mode with STIG policy configured | 21h2, Office 365, Teams, Fslogix, Onedrive, Updates, Optimizations, VM Preparation, STIGS | No ||Working on STIG scripts
 
 
@@ -38,7 +40,7 @@ Win10avdHardenedImage| Gen2 Marketplace VM; added scripts to install Microsoft 3
             - application-onedrive-latest
             - application-teams-latest
 
-- Version control. I don't fully understand AIB's VM image versions.
+- Version control. Currently the version is built automatically.
 
 
 ## Prereqs
@@ -161,7 +163,7 @@ In the customsequence it would look like:
             "restart": "True"
         },
 ```
-When ran with sequencer.ps1, it will produce the needed customizations for azure image builder
+When ran with _sequencer.ps1_, it will produce the needed customizations for azure image builder
 
 ```json
  {
@@ -202,11 +204,255 @@ When ran with sequencer.ps1, it will produce the needed customizations for azure
 },
 
 ```
-## Reference
 
+# CustomSequence properties
+
+The AIB Deployment Toolkit supports multiple `customsequences`. A customSequence is the order of how to install items such as script, apps, modules, updates and even reboots. It simplifies the need to call multiple customize property found [here](https://docs.microsoft.com/en-us/azure/virtual-machines/linux/image-builder-json?tabs=azure-powershell)
+
+Here are the many `customsequences` types that can be used:
+
+> All types support **restart** Boolean property
+
+## Type: **Applications**
+All applications are **elevated** and run as **system**.
+
+Supported parameters are:
+- **Name** - Name of the process
+- **workingDirectory** – Folder at which the application is installed from. The root starts with _c:\temp_
+- **executable** – The executable to run. This can be [ps1, exe or msi]
+- **arguments** – Optional, Provide the parameters need to run silently. The _\<destination\>_ designated allows for additional path support
+- **fileDependency** - Optional, array, triggers the _File copy_ customization.
+- **sasToken** – Optional, Provide Sas token from blob container. Do not provide full URI, it is built from this
+
+> When using _sastoken_ in conjunction with _fileDependency_, only one file is supported
+
+
+### Example one
+_Install application using script from blob uri (no file download)_
+```json
+"customSequence":  [
+      {
+            "type": "Application",
+            "name": "Install LGPO",
+            "workingDirectory": "LGPO",
+            "executable": "Install-LGPO.ps1",
+            "arguments": "",
+            "restart": "False"
+        }
+    ]
+```
+### Example two
+_download all files and install application using script from blob uri, then reboot when complete_
+```json
+"customSequence":  [
+        {
+            "type": "Application",
+            "name": "Customize System",
+            "workingDirectory": "Customizations",
+            "executable": "BrandWindows10.ps1",
+            "fileDependency": [
+                "aero.theme",
+                "Lockscreen.jpg",
+                "Wallpaper.jpg"
+            ],
+            "restart": "true"
+        }
+    ]
+```
+### Example three
+_Download zipped file using a SaS token and extract, then install application using command and argument_
+```json
+"customSequence":  [
+        {
+            "type": "Application",
+            "name": "Install Foxit PDF Reader",
+            "workingDirectory": "FoxitPDFReader",
+            "fileDependency": [
+                "FoxitPDFReader.zip"
+            ],
+            "sasToken": "sp=r&st=2022-09-06T15:11:06Z&se=2022-09-06T23:11:06Z&spr=https&sv=2021-06-08&sr=b&sig=o0Y3SZ9jJBakVyxtIb8rhbEzJFiCcc5K%2FxvRWsTaS8U%3D",
+            "executable": "FoxitPDFReader1201_enu_Setup.msi",
+            "arguments": "/quiet ADDLOCAL=\"FX_PDFVIEWER\""
+        },
+    ]
+```
+
+
+## Type: **ModernApp**
+
+Uses the _Inline_ customization in AIB, but specifically designed to install appx bundles offline.
+
+Supported parameters are:
+- **Name** - Name of the process
+- **workingDirectory** – Folder at which the zip files is extracted to. The root starts with _c:\temp_
+- **appxDependency** - Optional, array, triggers the _File copy_ customization
+- **appxBundle** – the Appx bundle to install.
+- **appxLicense** – the License file to load during install
+- **sasToken** – Optional, Provide Sas token from blob container. Do not provide full URI, it is built from this
+
+> When using _sastoken_ in conjunction with _appxDependency_, only one zip file is supported. **Include all appx, bundle, and license files in zip**
+
+### Example 1
+_download each appx dependency include license and bundle, and install_
+```json
+"customSequence":  [
+        {
+            "type": "ModernApp",
+            "name": "Install Microsoft News App",
+            "workingDirectory": "NewsAppx",
+            "appxDependency": [
+                "Microsoft.NET.Native.Framework.2.2_2.2.29512.0_x64__8wekyb3d8bbwe.appxbundle",
+                "Microsoft.NET.Native.Runtime.2.2_2.2.28604.0_x64__8wekyb3d8bbwe.appxbundle",
+                "Microsoft.UI.Xaml.2.1_2.11906.6001.0_x64__8wekyb3d8bbwe.appxbundle",
+                "Microsoft.VCLibs.140.00_14.0.30704.0_x64__8wekyb3d8bbwe.appxbundle"
+            ],
+            "appxBundle": "Microsoft.BingNews_4.9.30001.0_neutral_~_8wekyb3d8bbwe.appxbundle",
+            "appxLicense": "Microsoft.BingNews_8wekyb3d8bbwe_1f63b8c3-2d48-9497-0a0a-2cbd462ede76.xml"
+        },
+    ]
+```
+### Example 2
+_download appx dependency zipped file, extract and install_
+```json
+"customSequence":  [
+        {
+            "type": "ModernApp",
+            "name": "Install Microsoft News App",
+            "workingDirectory": "NewsAppx",
+            "sasToken": "sp=r&st=2022-09-03T19:23:53Z&se=2022-09-04T03:23:53Z&spr=https&sv=2021-06-08&sr=b&sig=2FoV6VhJ2lFMK8OOrhFvwpYYICEeHqNUq5UwOZmsjfA%3D",
+            "appxDependency": [
+                "Microsoft.BingNews.4.9.30001.0.zip"
+            ],
+            "appxBundle": "Microsoft.BingNews_4.9.30001.0_neutral_~_8wekyb3d8bbwe.appxbundle",
+            "appxLicense": "Microsoft.BingNews_8wekyb3d8bbwe_1f63b8c3-2d48-9497-0a0a-2cbd462ede76.xml"
+        },
+    ]
+```
+
+## Type: **Command**
+
+Based on the idea of the _Inline_ customization in AIB, but builds the inline commands automatically to include the ability to arguments and reboot
+
+Supported parameters are:
+- **Name** - Name of the process
+- **workingDirectory** – Folder at which the zip files is extracted to. The root starts with _c:\temp_
+- **command** – The command to run; this will read the commands extension and determine the appropriate inline command (supported file extensions: .vbs, .ps1, .exe, .msi)
+- **arguments** – Optional, Provide the parameters need to run silently. The _\<destination\>_ designated allows for additional path support
+
+### Example 1
+_Download script and run it._
+```json
+"customSequence":  [
+        {
+            "type": "Command",
+            "name": "Install Apps",
+            "workingDirectory": "Apps",
+            "command": "Install.ps1",
+            "restart": "false"
+        }
+    ]
+```
+### Example 2
+_Run dism command and reboot_
+```json
+"customSequence":  [
+        {
+            "type": "Command",
+            "name": "Cleanup image base",
+            "command": "Dism.exe",
+            "arguments": "/online /Cleanup-Image /StartComponentCleanup /ResetBase",
+            "restart": "true"
+        }
+    ]
+```
+
+
+## Type: **Module**
+
+Uses the _Inline_ customization in AIB, but specifically targets PowerShell modules.
+
+Supported parameters are:
+- **modules** – Array, The list of modules to install
+- **TrustedRepos** - Optional, array, a list of repository to trust.
+
+```json
+"customSequence":  [
+        {
+            "type": "Module",
+            "modules": [
+                "LGPO",
+                "YetAnotherCMLogger",
+                "MSFTLinkDownloader"
+            ],
+            "trustedRepos": [
+                "PSgallery"
+            ]
+        },
+    ]
+```
+
+## Type: **Archive**
+
+This process generates additional _Inline_ customizations to auto download AzCopy and trigger AzCopy copy commands to support the optional SAS Token URI
+
+Supported parameters are:
+- **Name** - Name of the process
+- **workingDirectory** – Folder at which the zip files is extracted to. The root starts with _c:\temp_
+- **archiveFile** – The single archive file to extract (supported extensions: .zip and .cab). This can be [ps1, exe or msi]
+- **sasToken** – Optional, Provide Sas token from blob container. Do not provide full URI, it is built from this
+
+```json
+"customSequence":  [
+        {
+            "type": "Archive",
+            "name": "Get Apps",
+            "workingDirectory": "Apps",
+            "archiveFile": "Apps.zip",
+            "sasToken": "sp=r&st=2022-09-03T19:23:53Z&se=2022-09-04T03:23:53Z&spr=https&sv=2021-06-08&sr=b&sig=2FoV6VhJ2lFMK8OOrhFvwpYYICEeHqNUq5UwOZmsjfA%3D"
+        }
+    ]
+```
+
+## Type: **WindowsUpdate**
+
+Based on the idea of the _WindowsUpdate_ command for the AIB customization, but with standard options. Filter capability not supported; but may be coming soon
+
+Supported parameters are:
+- **restartTimeout** - Optional, boolean, generates the _WindowsRestart_ customization with 10 minute timeout
+
+```json
+"customSequence":  [
+        {
+            "type": "WindowsUpdate",
+            "restartTimeout": "10"
+        }
+    ]
+```
+
+
+## Type: **Restart**
+
+Based on the idea of the _WindowsRestart_ for the AIB customization, but simpler. **Not typically used since most other `customsequence` support restarts**
+
+Supported parameters are:
+- **Name** - Name of the process
+
+```json
+"customSequence":  [
+        {
+            "type": "Restart",
+            "Name": "One last reboot"
+        }
+    ]
+```
+
+## References
+
+- https://github.com/danielsollondon/azvmimagebuilder/tree/master/quickquickstarts/0_Creating_a_Custom_Windows_Managed_Image
 - https://docs.microsoft.com/en-us/azure/virtual-machines/linux/image-builder-json?tabs=azure-powershell
 - https://docs.microsoft.com/en-us/azure/virtual-desktop/set-up-customize-master-image
 - https://docs.microsoft.com/en-us/azure/virtual-desktop/set-up-golden-image
+- https://docs.microsoft.com/en-us/azure/virtual-machines/windows/image-builder-powershell
 
 # DISCLAIMER
 > Even though I have tested this to the extend that I could, I want to ensure your aware of Microsoft’s position on developing scripts.
