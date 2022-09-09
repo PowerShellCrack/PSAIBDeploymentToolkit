@@ -31,9 +31,9 @@
             "identity": {
                 "type": "UserAssigned",
                         "userAssignedIdentities": {
-                        "<imgBuilderId>": {}
+                            "<imgBuilderId>": {}
 
-                    }
+                        }
                     },
 
         "properties": {
@@ -54,37 +54,6 @@
             },
             "customize": [
 
-                {
-                    "type": "WindowsUpdate",
-                    "searchCriteria": "IsInstalled=0",
-                    "filters": [
-                        "exclude:$_.Title -like '*Preview*'",
-                        "include:$true"
-                                ],
-                    "updateLimit": 40
-                },
-
-                {
-                    "type": "WindowsRestart",
-                    "restartCheckCommand": "write-host 'restarting post Windows Updates (round 1)'",
-                    "restartTimeout": "10m"
-                },
-
-                {
-                    "type": "WindowsUpdate",
-                    "searchCriteria": "IsInstalled=0",
-                    "filters": [
-                        "exclude:$_.Title -like '*Preview*'",
-                        "include:$true"
-                                ],
-                    "updateLimit": 40
-                },
-
-                {
-                    "type": "WindowsRestart",
-                    "restartCheckCommand": "write-host 'restarting post Windows Updates (round 2)'",
-                    "restartTimeout": "5m"
-                }
 
             ],
             "distribute":

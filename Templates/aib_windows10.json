@@ -31,9 +31,9 @@
             "identity": {
                 "type": "UserAssigned",
                         "userAssignedIdentities": {
-                        "<imgBuilderId>": {}
+                            "<imgBuilderId>": {}
 
-                    }
+                        }
                     },
 
         "properties": {

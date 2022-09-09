@@ -499,25 +499,49 @@ Function ConvertTo-AIBCustomization{
             $ObjectArray += ConvertTo-AIBLocalCommand @CommandParams
         }
 
-        'Package' {
+        'LanguagePackage' {
+            $ProvisionCommand = @()
+            #https://docs.microsoft.com/en-us/azure/virtual-desktop/language-packs
             If($CustomData.packageDependency.count -gt 0){
-                Foreach($file in $CustomData.packageDependency | Where {$_ -ne $CustomData.executable}){
+                Foreach($package in $CustomData.packageDependency | Where {$_ -ne $CustomData.executable}){
                     $object = New-Object -TypeName PSObject
                     $object | Add-Member -MemberType NoteProperty -Name 'type' -Value "File"
-                    $object | Add-Member -MemberType NoteProperty -Name 'name' -Value ("Copying " + $file)
-                    $object | Add-Member -MemberType NoteProperty -Name 'sourceUri' -Value ('https://' + $BlobURL + '/package-' + $CustomData.workingDirectory.ToLower() + '/' + $file)
-                    $object | Add-Member -MemberType NoteProperty -Name 'destination' -Value ($FileCopyDest + '\Packages\' + $CustomData.workingDirectory + '\' + $file)
-                    If( (Test-Path ('.\Packages\' + $CustomData.workingDirectory + '\' + $file)) -and !$SkipChecksum){
-                        $CheckSum = Get-FileHash ('.\Packages\' + $CustomData.workingDirectory + '\' + $CustomData.executable) | Select -ExpandProperty Hash
+                    $object | Add-Member -MemberType NoteProperty -Name 'name' -Value ("Copying " + $package)
+                    $object | Add-Member -MemberType NoteProperty -Name 'sourceUri' -Value ('https://' + $BlobURL + '/package-' + $CustomData.languageLocale.ToLower() + '/' + $package)
+                    $object | Add-Member -MemberType NoteProperty -Name 'destination' -Value ($FileCopyDest + '\Packages\' + $CustomData.languageLocale + '\' + $package)
+                    If( (Test-Path ('.\Packages\' + $CustomData.languageLocale + '\' + $package)) -and !$SkipChecksum){
+                        $CheckSum = Get-FileHash ('.\Packages\' + $CustomData.languageLocale + '\' + $package) | Select -ExpandProperty Hash
                         $object | Add-Member -MemberType NoteProperty -Name 'sha256Checksum' -Value $CheckSum
                     }
                     If($IncludePoshCmd){$object | Add-Member -MemberType NoteProperty -Name 'PoshCommand' -Value @(
-                            "Invoke-WebRequest ""https://$BlobURL/package-$($CustomData.workingDirectory.ToLower())/$file"" -OutFile ""$FileCopyDest\Packages\$($CustomData.workingDirectory)\$file"""
+                            "Invoke-WebRequest ""https://$BlobURL/package-$($CustomData.languageLocale.ToLower())/$package"" -OutFile ""$FileCopyDest\Packages\$($CustomData.languageLocale)\$package"""
                         )
                     }
                     $ObjectArray += $object
                 }
+                $ProvisionCommand += "Add-WindowsPackage -Online -PackagePath ""$FileCopyDest\Packages\$($CustomData.languageLocale)\$package"""
             }
+
+            #Step 3. Extract file
+            $InlineCommands = @(
+                "Add-AppProvisionedPackage -Online -PackagePath ""$FileCopyDest\Packages\$($CustomData.LanguageLocale)\LanguageExperiencePack.$($CustomData.languageLocale.ToLower()).Neutral.appx"" -LicensePath ""$FileCopyDest\Packages\$($CustomData.LanguageLocale)\License.xml"""
+            )
+
+            $InlineCommands += $ProvisionCommand
+            $InlineCommands += @(
+                "`$LanguageList = Get-WinUserLanguageList",
+                "`$LanguageList.Add(""$($CustomData.LanguageLocale.ToLower())"")",
+                "Set-WinUserLanguageList `$LanguageList -force"
+            )
+
+            $object = New-Object -TypeName PSObject
+            $object | Add-Member -MemberType NoteProperty -Name 'type' -Value "PowerShell"
+            $object | Add-Member -MemberType NoteProperty -Name 'name' -Value ("Adding Language pack for locale: " + $CustomData.LanguageLocale)
+            $object | Add-Member -MemberType NoteProperty -Name 'runElevated' -Value $True
+            $object | Add-Member -MemberType NoteProperty -Name 'runAsSystem' -Value $True
+            $object | Add-Member -MemberType NoteProperty -Name 'inline' -Value $InlineCommands
+            If($IncludePoshCmd){$object | Add-Member -MemberType NoteProperty -Name 'PoshCommand' -Value $InlineCommands}
+            $ObjectArray += $object
         }
 
         'Script' {
@@ -637,33 +661,34 @@ Function ConvertFrom-CustomSequence{
     $CustomSequences = @()
 
     #Step 1: Build working directories inline command
-    $Name = "Build working directories"
-    $InlineCommands = @(
-            "New-Item '$FileCopyDest' -ItemType Directory -ErrorAction SilentlyContinue"
-    )
-
-    #build folder structure based on certain types
-    Foreach($Data in $SequenceData | Where type -match "Application|Archive|Script|Package|ModernApp" ){
-        $InlineCommands += @(
-            "New-Item '$FileCopyDest\$($Data.Type)s' -ItemType Directory -ErrorAction SilentlyContinue"
+    If($SequenceData.type -match "Application|Archive|Script|Package|ModernApp"){
+        $Name = "Build working directories"
+        $InlineCommands = @(
+                "New-Item '$FileCopyDest' -ItemType Directory -ErrorAction SilentlyContinue"
         )
-        #collect each working directory
-        Foreach($directory in $Data.workingDirectory | Select -Unique){
+        #build folder structure based on certain types
+        Foreach($Data in $SequenceData | Where type -match "Application|Archive|Script|Package|ModernApp" ){
             $InlineCommands += @(
-                "New-Item '$FileCopyDest\$($Data.Type)s\$directory' -ItemType Directory -ErrorAction SilentlyContinue"
+                "New-Item '$FileCopyDest\$($Data.Type)s' -ItemType Directory -ErrorAction SilentlyContinue"
             )
+            #collect each working directory
+            Foreach($directory in $Data.workingDirectory | Select -Unique){
+                $InlineCommands += @(
+                    "New-Item '$FileCopyDest\$($Data.Type)s\$directory' -ItemType Directory -ErrorAction SilentlyContinue"
+                )
+            }
         }
-    }
 
-    $object = New-Object -TypeName PSObject
-    $object | Add-Member -MemberType NoteProperty -Name 'type' -Value "PowerShell"
-    $object | Add-Member -MemberType NoteProperty -Name 'name' -Value $Name
-    $object | Add-Member -MemberType NoteProperty -Name 'runElevated' -Value $True
-    $object | Add-Member -MemberType NoteProperty -Name 'runAsSystem' -Value $True
-    $object | Add-Member -MemberType NoteProperty -Name 'inline' -Value $InlineCommands
-    #this is to export to ps1 file for testing
-    If($IncludePoshCmd){$object | Add-Member -MemberType NoteProperty -Name 'PoshCommand' -Value $InlineCommands}
-    $CustomSequences += $object
+        $object = New-Object -TypeName PSObject
+        $object | Add-Member -MemberType NoteProperty -Name 'type' -Value "PowerShell"
+        $object | Add-Member -MemberType NoteProperty -Name 'name' -Value $Name
+        $object | Add-Member -MemberType NoteProperty -Name 'runElevated' -Value $True
+        $object | Add-Member -MemberType NoteProperty -Name 'runAsSystem' -Value $True
+        $object | Add-Member -MemberType NoteProperty -Name 'inline' -Value $InlineCommands
+        #this is to export to ps1 file for testing
+        If($IncludePoshCmd){$object | Add-Member -MemberType NoteProperty -Name 'PoshCommand' -Value $InlineCommands}
+        $CustomSequences += $object
+    }
 
     #to use Blob shared access token, you must use Azcopy. First is to download it
     If($SequenceData.sasToken.count -gt 0){
@@ -829,6 +854,7 @@ $SequenceData = Get-Content .\Control\Win10avdTestImage\aib.json -raw | ConvertF
 $SequenceData = Get-Content .\Control\Win10avdBaselineImage\aib.json -raw | ConvertFrom-Json | Select -expandProperty customSequence
 $SequenceData = Get-Content .\Control\Win10avdSimpleImage\aib.json -raw | ConvertFrom-Json | Select -expandProperty customSequence
 $SequenceData = Get-Content .\Control\Win10avdHardenedImage\aib.json -raw | ConvertFrom-Json | Select -expandProperty customSequence
+$SequenceData = Get-Content .\Control\Win10avdMarketImage\aib.json -raw | ConvertFrom-Json | Select -expandProperty customSequence
 [System.Object[]]$CustomData = $SequenceData | Where Type -eq 'Application' | Select -first 1
 [System.Object[]]$CustomData = $SequenceData | Where Type -eq 'Script' | Select -first 1
 

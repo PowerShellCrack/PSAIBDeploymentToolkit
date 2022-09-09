@@ -48,7 +48,7 @@
             "source": {
                 "type": "PlatformImage",
                     "publisher": "MicrosoftWindowsDesktop",
-                    "offer": "windows-10",
+                    "offer": "office-365",
                     "sku": "<OSSku>",
                     "version": "latest"
             },

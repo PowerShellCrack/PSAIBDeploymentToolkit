@@ -55,24 +55,25 @@ Param(
 
     [switch]$DeleteLogs,
 
-    [switch]$CleanupFails
+    [switch]$CleanOnFailure
 )
 
 $ErrorActionPreference = "Stop"
 
+If($DeleteLogs){
+    Remove-Item "$PSScriptRoot\Logs\*" -recurse -ErrorAction SilentlyContinue | Out-Null
+}
 New-Item "$PSScriptRoot\Logs" -ItemType Directory -ErrorAction SilentlyContinue | Out-Null
-$Date = Get-Date -Format 'yyyy-MM-dd_Thh-mm-ss-tt'
-$LogfileName = "buildaibtemplate_$($Template.ToLower())_$Date.log"
+$Date = Get-Date
+
+$DateLogFormat = $Date.ToString('yyyy-MM-dd_Thh-mm-ss-tt')
+$LogfileName = ('buildaibtemplate_' + $Template.ToLower() + '_' + $DateLogFormat + '.log')
 Try{Start-transcript "$PSScriptRoot\Logs\$LogfileName" -ErrorAction Stop}catch{Start-Transcript "$PSScriptRoot\$LogfileName"}
 
-
-#TEST $Settings = Get-Content ".\Control\Settings-ritracyi-gov.json" -Raw | ConvertFrom-Json
+#get the settings
 $Settings = Get-Content "$PSScriptRoot\Control\$ControlSetting" -Raw | ConvertFrom-Json
 
-#TEST $TemplateConfigs = Get-Content ".\Control\Win10avdTestImage\aib.json" -Raw | ConvertFrom-Json
-#TEST $TemplateConfigs = Get-Content ".\Control\Win10avdBaselineImage\aib.json" -Raw | ConvertFrom-Json
-#TEST $TemplateConfigs = Get-Content ".\Control\Win10avdLatestUpdates\aib.json" -Raw | ConvertFrom-Json
-#TEST $TemplateConfigs = Get-Content ".\Control\Win10avdMarketImage\aib.json" -Raw | ConvertFrom-Json
+#get the template settings
 $TemplateConfigs = Get-Content "$PSScriptRoot\Control\$Template\aib.json" -Raw | ConvertFrom-Json
 
 # Add AZ PS modules to support AzUserAssignedIdentity and Az AIB
@@ -100,8 +101,7 @@ Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "true" | Out-Null
 <#
 #Reference: https://docs.microsoft.com/en-us/azure/virtual-machines/image-builder-overview?tabs=azure-powershell
 Get-AzResourceProvider -ProviderNamespace Microsoft.Compute, Microsoft.KeyVault, Microsoft.Storage, Microsoft.VirtualMachineImages, Microsoft.Network |
-    Where-Object RegistrationState -ne Registered |
-        Register-AzResourceProvider
+    Where-Object RegistrationState -ne Registered | Register-AzResourceProvider
 #>
 $AzureProviders = Get-AzResourceProvider -ProviderNamespace Microsoft.Compute, Microsoft.KeyVault, Microsoft.Storage, Microsoft.VirtualMachineImages, Microsoft.Network
 If((Get-AzContext).Environment.Name -eq 'AzureUSGovernment'){
@@ -190,25 +190,7 @@ $roleDefinitionUri = "https://$($Settings.Resources.resourceBlobURI)/templates/$
 $roleDefinitionPath = Join-Path $env:TEMP -ChildPath $Settings.ManagedIdentity.roleDefinitionTemplate
 # Use a web request to download the sample JSON description
 Invoke-WebRequest -Uri $roleDefinitionUri -Outfile $roleDefinitionPath -UseBasicParsing
-<#
-#grab a simliar role
-$role = Get-AzRoleDefinition -Name "Virtual Machine Contributor"
-#define new values
-$role.Id = $null
-$role.Name = $imageRoleDefName
-$role.IsCustom = $true
-$role.Description = "Image Builder access to create resources for the image build, you should delete or split out as appropriate"
-$role.Actions.RemoveRange(0,$role.Actions.Count)
-$role.Actions.Add("Microsoft.Compute/galleries/read")
-$role.Actions.Add("Microsoft.Compute/galleries/images/read")
-$role.Actions.Add("Microsoft.Compute/galleries/images/versions/read")
-$role.Actions.Add("Microsoft.Compute/galleries/images/versions/write")
-$role.Actions.Add("Microsoft.Compute/images/write")
-$role.Actions.Add("Microsoft.Compute/images/read")
-$role.Actions.Add("Microsoft.Compute/images/delete")
-$role.AssignableScopes.Clear()
-$role.AssignableScopes.Add("/subscriptions/$subscriptionID/resourceGroups/$Settings.Resources.imageResourceGroup")
-#>
+
 # Update the JSON definition placeholders with variable values
 ((Get-Content -path $roleDefinitionPath -Raw) -replace '<subscriptionID>',$subscriptionID) | Set-Content -Path $roleDefinitionPath
 ((Get-Content -path $roleDefinitionPath -Raw) -replace '<rgName>', $Settings.Resources.imageResourceGroup) | Set-Content -Path $roleDefinitionPath
@@ -275,7 +257,7 @@ $StorageContext = New-AzStorageContext -StorageAccountName $Settings.Resources.r
 # Grant the storage reader to the user-assigned managed identity for Azure Image Builder.
 If(-Not($StorageRoleAssignment = Get-AzRoleAssignment -ObjectId $IdentityNamePrincipalId -ErrorAction SilentlyContinue | Where RoleDefinitionName -eq 'Storage Blob Data Reader'))
 {
-    Write-Host ("Assigning 'Storage Blob Data Reader' for AIB Managed Identity [{0}]..." -f $AssignedID.Name) -ForegroundColor White -NoNewline
+    Write-Host ("Assigning [Storage Blob Data Reader] for AIB Managed Identity [{0}]..." -f $AssignedID.Name) -ForegroundColor White -NoNewline
     Try{
         # Grant the custom role to the user-assigned managed identity for Azure Image Builder.
         $parameters = @{
@@ -292,7 +274,7 @@ If(-Not($StorageRoleAssignment = Get-AzRoleAssignment -ObjectId $IdentityNamePri
         Stop-Transcript;Break
     }
 }Else{
-    Write-Host ("'Storage reader role' is already assigned to AIB Managed Identity [{0}]" -f $AssignedID.Name) -ForegroundColor Green
+    Write-Host ("[Storage reader role] is already assigned to AIB Managed Identity [{0}]" -f $AssignedID.Name) -ForegroundColor Green
 }
 
 
@@ -317,44 +299,24 @@ If(-Not($Gallery = Get-AzGallery -ResourceGroupName $Settings.Resources.imageRes
 }
 
 
-# create gallery definition
-#=======================================================
-If(-Not($AzImageDef = Get-AzGalleryImageDefinition -ResourceGroupName $Settings.Resources.imageResourceGroup -GalleryName $Settings.Resources.imageComputeGallery | Where {$_.Identifier.Publisher -eq $Settings.Environment.domain -and $_.Identifier.Sku -eq $TemplateConfigs.ImageDefinition.sku })){
-    Try{
-        Write-Host ("Creating Azure Image definition [{0}]..." -f $TemplateConfigs.ImageDefinition.Name) -ForegroundColor White -NoNewline
-        $AzImageDef = New-AzGalleryImageDefinition `
-                            -GalleryName $Settings.Resources.imageComputeGallery `
-                            -ResourceGroupName $Settings.Resources.imageResourceGroup `
-                            -Location $Settings.Environment.location `
-                            -Name $TemplateConfigs.ImageDefinition.Name `
-                            -OsState generalized `
-                            -OsType Windows `
-                            -Publisher $Settings.Environment.domain `
-                            -Offer $TemplateConfigs.ImageDefinition.Offer `
-                            -Sku $TemplateConfigs.ImageDefinition.sku `
-                            -HyperVGeneration V2
-        Write-Host "Done" -ForegroundColor Green
-    }Catch{
-        Write-Host ("Failed: {0}" -f $_.Exception.message) -BackgroundColor Red
-        Stop-Transcript;Break
-    }
-}ElseIf($TemplateConfigs.ImageDefinition.Name -ne $AzImageDef.Name){
-    Write-Host ("Definition already exists, using Azure Image definition [{0}] instead" -f $AzImageDef.Name) -ForegroundColor Yellow
-    #update definition name
-    $TemplateConfigs.ImageDefinition.Name = $AzImageDef.Name
-}Else{
-    Write-Host ("Using Azure Image definition [{0}]" -f $TemplateConfigs.ImageDefinition.Name) -ForegroundColor Green
-}
-
-# Generate Image version
+# Generate Image template
 #=======================================================
 #Get current image versions; increment if needed
 Write-Host ("Defining Image version...") -ForegroundColor White -NoNewline
+$Year=$Date.ToString('yyyy')
+$Month=$Date.ToString('MM')
+$Day=$Date.ToString('dd')
+$buildOutputName=('sig' + $Date.ToString('Thhmmsstt'))
+
 If($ImageVersions = Get-AzGalleryImageVersion -ResourceGroupName $Settings.Resources.imageResourceGroup -GalleryName $Settings.Resources.imageComputeGallery -GalleryImageDefinitionName $TemplateConfigs.ImageDefinition.Name | Select -Last 1){
     $v = [version]$ImageVersions.Name
-    [string]$NewVersion = [version]::New($v.Major,$v.Minor,$v.Build + 1,0)
+    If($v -eq [version]("{0}.{1}.{2}.{3}" -f $Year, $Month, $Day, 1)){
+        [string]$NewVersion = [version]::New($v.Major,$v.Minor,$v.Build,$v.Revision + 1)
+    }Else{
+        [string]$NewVersion = ("{0}.{1}.{2}.{3}" -f $Year, $Month, $Day, 1)
+    }
 }Else{
-    [string]$NewVersion = '1.0.0.0'
+    [string]$NewVersion = ("{0}.{1}.{2}.{3}" -f $Year, $Month, $Day, 1)
 }
 Write-Host ("{0}" -f [string]$NewVersion) -ForegroundColor Green
 
@@ -364,8 +326,8 @@ Try{
     Write-Host ("Generating template...") -NoNewline
     #Reference: https://docs.microsoft.com/en-us/azure/templates/microsoft.virtualmachineimages/imagetemplates?tabs=json&pivots=deployment-language-arm-template
     $templateUri = "https://$($Settings.Resources.resourceBlobURI)/templates/$($TemplateConfigs.Template.templateFile)"
-    $templateFilePath = Join-Path "$PSScriptRoot\Logs" -ChildPath "aibtemplate_$($Template.ToLower())_$NewVersion_$Date.json"
-    $commandsFilePath = Join-Path "$PSScriptRoot\Logs" -ChildPath "poshcommands_$($Template.ToLower())_$NewVersion_$Date.ps1"
+    $templateFilePath = Join-Path "$PSScriptRoot\Logs" -ChildPath ('aibtemplate_' + $Template.ToLower() + '_' + $NewVersion + '.json')
+    $commandsFilePath = Join-Path "$PSScriptRoot\Logs" -ChildPath ('poshcommands_' + $Template.ToLower() + '_' + $NewVersion + '.ps1')
 
     #Download standard template from Blob URL
     Invoke-WebRequest -Uri $templateUri -OutFile $templateFilePath -UseBasicParsing
@@ -374,7 +336,7 @@ Try{
     $TemplateContent = $TemplateContent -replace '<subscriptionID>',$subscriptionID `
                     -replace '<rgName>',$Settings.Resources.imageResourceGroup `
                     -replace '<region>',$Settings.Environment.location `
-                    -replace '<runOutputName>',$TemplateConfigs.buildOutputName `
+                    -replace '<runOutputName>',$buildOutputName `
                     -replace '<imageDefName>',$TemplateConfigs.ImageDefinition.Name `
                     -replace '<sharedImageGalName>',$Settings.Resources.imageComputeGallery `
                     -replace '<region1>',$Settings.Environment.location `
@@ -385,61 +347,72 @@ Try{
     #save file
     $TemplateContent | Set-Content -Path $templateFilePath -Force
 
-
     #build customization if exists
     If($TemplateConfigs.customSequence.count -gt 0){
         $SequenceTypes = $TemplateConfigs.customSequence | Where sasToken -ne $null
-        #TEST $Type = $SasSupportedTypes[0]
+        #TEST $Type = $SequenceTypes[0]
         Foreach($Type in $SequenceTypes){
+            Write-Host ("Sas Token found.`nChecking SaS Token for [{0}]..." -f $Type.name) -ForegroundColor White -NoNewline
             $ExpiryDate = [System.Text.RegularExpressions.Regex]::Match($Type.sasToken, '^sp=r&st=(?<Start>.*)&se=(?<Expiry>.*)&spr=(?<Date>.*)').Groups['Expiry'].value
             If((Get-Date) -gt [DateTime]$ExpiryDate){
-                Write-Host ("Sas Token needs to be renewed for [{0}]..." -f $Type.name) -ForegroundColor Yellow -NoNewline
-
+                Write-Host ("expired on [{0}]..." -f $ExpiryDate) -ForegroundColor Yellow
+                    $NewSasToken = Read-host ("What is the new SaS Token for [{0}]" -f $Type.name)
+                    $Type.sasToken = $NewSasToken
+                    #TODO: need to update aib.json with new Sastoken
+                    
+            }Else{
+                Write-Host ("still valid until [{0}]" -f $ExpiryDate) -ForegroundColor Green
             }
-
         }
-
-
-        #grab the edited aib template; convert to object
-        # $TemplateData = Get-Content -path .\logs\aibtemplate_win10avdtestimage_2022-09-04_T09-19-19-PM.json -Raw | ConvertFrom-Json
-        $TemplateData = Get-Content -path $templateFilePath -Raw | ConvertFrom-Json
-        #Update build timeout
-        If($TemplateConfigs.buildTimeout){
-            $TemplateData.resources.properties.buildTimeoutInMinutes = $TemplateConfigs.buildTimeout
-        }
-        #Update Disk size
-        If($TemplateConfigs.buildDiskSize){
-            $TemplateData.resources.properties.vmProfile.osDiskSizeGB = $TemplateConfigs.buildDiskSize
-        }
-
-        #update Image version to new version
-        $galleryImageId = "$($TemplateData.resources.properties.distribute.galleryImageId)/versions/$NewVersion"
-        $TemplateData.resources.properties.distribute | ForEach-Object { $_.galleryImageId = $galleryImageId }
-
-        #convert the selected aib.json's customsequence section into aib format (as psobjects)
-        $customizeData = ConvertFrom-CustomSequence -BlobURL $Settings.Resources.resourceBlobURI -SequenceData $TemplateConfigs.customSequence -ProvisionVMMode -Passthru
-        $SupportCmds = ConvertTo-PoshCommands -BlobURL $Settings.Resources.resourceBlobURI -SequenceData $TemplateConfigs.customSequence
-        #add new customizations to templates customize property
-        $TemplateData.resources.properties.customize = $customizeData
-        #convert back to json
-        $NewJson = $TemplateData | ConvertTo-Json -Depth 6
-        #fix the \u0027 issue and save file
-        ([regex]'(?i)\\u([0-9a-h]{4})').Replace($NewJson, {param($Match) "$([char][int64]"0x$($Match.Groups[1].Value)")"}) | Set-Content -Path $templateFilePath -Force
-        #export commands to a support file (for testing)
-        $SupportCmds | Set-Content -Path $commandsFilePath -Force
     }
-    Write-Host ("Done.`nTemplate file is located: {0}" -f  $templateFilePath) -ForegroundColor Green
+
+    #grab the edited aib template; convert to object
+    # $TemplateData = Get-Content -path .\$templateFilePath -Raw | ConvertFrom-Json
+    $TemplateData = Get-Content -path $templateFilePath -Raw | ConvertFrom-Json
+
+    #Update build timeout
+    If($TemplateConfigs.buildTimeout){
+        $TemplateData.resources.properties.buildTimeoutInMinutes = $TemplateConfigs.buildTimeout
+    }
+    #Update Disk size
+    If($TemplateConfigs.buildDiskSize){
+        $TemplateData.resources.properties.vmProfile.osDiskSizeGB = $TemplateConfigs.buildDiskSize
+    }
+
+    #update Image version to new version
+    $galleryImageId = "$($TemplateData.resources.properties.distribute.galleryImageId)/versions/$NewVersion"
+    $TemplateData.resources.properties.distribute | ForEach-Object { $_.galleryImageId = $galleryImageId }
+
+    #convert the selected aib.json's customsequence section into aib format (as psobjects)
+    #$customizeData = ConvertFrom-CustomSequence -BlobURL $Settings.Resources.resourceBlobURI -SequenceData $TemplateConfigs.customSequence -Passthru
+    $customizeData = ConvertFrom-CustomSequence -BlobURL $Settings.Resources.resourceBlobURI -SequenceData $TemplateConfigs.customSequence -ProvisionVMMode -Passthru
+    $SupportCmds = ConvertTo-PoshCommands -BlobURL $Settings.Resources.resourceBlobURI -SequenceData $TemplateConfigs.customSequence
+    #add new customizations to templates customize property
+    #$TemplateCustomizations = $TemplateData.resources.properties.customize
+    $TemplateData.resources.properties.customize += $customizeData
+
+    #convert back to json
+    $NewAIBTemplate = $TemplateData | ConvertTo-Json -Depth 6
+    #fix the \u0027 issue and save file
+    ([regex]'(?i)\\u([0-9a-h]{4})').Replace($NewAIBTemplate, {param($Match) "$([char][int64]"0x$($Match.Groups[1].Value)")"}) | Set-Content -Path $templateFilePath -Force
+    #export commands to a support file (for testing)
+    $SupportCmds | Set-Content -Path $commandsFilePath -Force
+
+    Write-Host ("Done.") -ForegroundColor Green
+    Write-Host ("Copy of template file is located: ") -ForegroundColor White -NoNewline
+    Write-Host ("{0}" -f $templateFilePath) -ForegroundColor Green
+    Write-Host ("Template [run output name] will be: ") -ForegroundColor White -NoNewline
+    Write-Host ("{0}" -f $buildOutputName) -ForegroundColor Green
 }
 Catch{
     Write-Host ("Failed: {0}" -f $_.Exception.message) -BackgroundColor Red
     Stop-Transcript;Break
 }
 
-
 <#
 # Defining Image version
 #=======================================================
-
+#https://docs.microsoft.com/en-us/azure/virtual-machines/windows/image-builder-powershell
 Try{
     #Define Version
     $distributorObjectParameters = @{
@@ -474,10 +447,10 @@ If(-Not(Get-AzImageBuilderTemplate -ImageTemplateName $TemplateConfigs.Template.
 
         $ImgTemplateParams = @{
             ImageTemplateName = $TemplateConfigs.Template.imageTemplateName
-            ResourceGroupName =$Settings.Resources.imageResourceGroup
+            ResourceGroupName = $Settings.Resources.imageResourceGroup
             Source = $srcPlatform
             Distribute = $distributorObject
-            #Customize = $Customizer01, $Customizer02
+            Customize = @(ConvertFrom-CustomSequence -BlobURL $Settings.Resources.resourceBlobURI -SequenceData $TemplateConfigs.customSequence -ProvisionVMMode -Passthru)
             Location = $Settings.Environment.location
             UserAssignedIdentityId = $identityNameResourceId
         }
@@ -490,25 +463,57 @@ If(-Not(Get-AzImageBuilderTemplate -ImageTemplateName $TemplateConfigs.Template.
     }
 }
 #>
+
+# Create gallery definition
+#=======================================================
+If(-Not($AzImageDef = Get-AzGalleryImageDefinition -ResourceGroupName $Settings.Resources.imageResourceGroup -GalleryName $Settings.Resources.imageComputeGallery | Where {$_.Identifier.Publisher -eq $Settings.Environment.domain -and $_.Identifier.Sku -eq $TemplateConfigs.ImageDefinition.sku })){
+    Try{
+        Write-Host ("Creating Azure Image definition [{0}]..." -f $TemplateConfigs.ImageDefinition.Name) -ForegroundColor White -NoNewline
+        $AzImageDef = New-AzGalleryImageDefinition `
+                            -GalleryName $Settings.Resources.imageComputeGallery `
+                            -ResourceGroupName $Settings.Resources.imageResourceGroup `
+                            -Location $Settings.Environment.location `
+                            -Name $TemplateConfigs.ImageDefinition.Name `
+                            -OsState generalized `
+                            -OsType Windows `
+                            -Publisher $Settings.Environment.domain `
+                            -Offer $TemplateConfigs.ImageDefinition.Offer `
+                            -Sku $TemplateConfigs.ImageDefinition.sku `
+                            -HyperVGeneration V2
+        Write-Host "Done" -ForegroundColor Green
+    }Catch{
+        Write-Host ("Failed: {0}" -f $_.Exception.message) -BackgroundColor Red
+        Stop-Transcript;Break
+    }
+}ElseIf($TemplateConfigs.ImageDefinition.Name -ne $AzImageDef.Name){
+    Write-Host ("Definition already exists, using Azure Image definition [{0}] instead" -f $AzImageDef.Name) -ForegroundColor Yellow
+    #update definition name
+    $TemplateConfigs.ImageDefinition.Name = $AzImageDef.Name
+}Else{
+    Write-Host ("Using Azure Image definition [{0}]" -f $TemplateConfigs.ImageDefinition.Name) -ForegroundColor Green
+}
+
+
 # Submit the template; upload generated json to AIB service
 #==========================================================
-If(-Not($AzDeployGroup = Get-AzResourceGroupDeployment -ResourceGroupName $Settings.Resources.imageResourceGroup -Name $TemplateConfigs.Template.imageTemplateName -ErrorAction SilentlyContinue)){
+If(-Not($AzDeployGroup = Get-AzResourceGroupDeployment -Name $TemplateConfigs.Template.imageTemplateName -ResourceGroupName $Settings.Resources.imageResourceGroup -ErrorAction SilentlyContinue)){
     Try{
         Write-Host ("Creating Azure Deployment [{0}]..." -f $TemplateConfigs.Template.imageTemplateName) -ForegroundColor White -NoNewline
 
         $AzDeployGroup = New-AzResourceGroupDeployment `
-                                -ResourceGroupName $Settings.Resources.imageResourceGroup `
-                                -TemplateFile $templateFilePath `
-                                -api-version "2021-10-01" `
                                 -imageTemplateName $TemplateConfigs.Template.imageTemplateName `
-                                -svclocation $Settings.Environment.location
+                                -ResourceGroupName $Settings.Resources.imageResourceGroup `
+                                -svclocation $Settings.Environment.location `
+                                -TemplateFile $templateFilePath `
+                                -api-version "2021-10-01"
+
         Write-Host "Done" -ForegroundColor Green
     }
     Catch{
         Write-Host ("Failed: {0}" -f $_.Exception.message) -BackgroundColor Red
         Get-AzImageBuilderTemplate -ImageTemplateName $TemplateConfigs.Template.imageTemplateName -ResourceGroupName $Settings.Resources.imageResourceGroup | Select-Object ProvisioningState, ProvisioningErrorMessage
-        If($CleanupFails){
-            Remove-AzResourceGroupDeployment -ResourceGroupName $Settings.Resources.imageResourceGroup -Name $TemplateConfigs.Template.imageTemplateName -ErrorAction SilentlyContinue
+        If($CleanOnFailure){
+            Remove-AzResourceGroupDeployment -Name $TemplateConfigs.Template.imageTemplateName -ResourceGroupName $Settings.Resources.imageResourceGroup -ErrorAction SilentlyContinue
         }
         Stop-Transcript;Break
     }
@@ -516,10 +521,11 @@ If(-Not($AzDeployGroup = Get-AzResourceGroupDeployment -ResourceGroupName $Setti
     Write-Host ("Using Azure Deployment [{0}]" -f $TemplateConfigs.ImageDefinition.Name) -ForegroundColor Green
 }
 
-# Optional - if you have any errors running the above, run:
-#$getStatus=$(Get-AzImageBuilderTemplate -ResourceGroupName $Settings.Resources.imageResourceGroup -Name $TemplateConfigs.Template.imageTemplateName)
-#$getStatus.ProvisioningErrorCode
-#$getStatus.ProvisioningErrorMessage
+<# Optional - if you have any errors running the above, run:
+$getStatus=$(Get-AzImageBuilderTemplate -ResourceGroupName $Settings.Resources.imageResourceGroup -Name $TemplateConfigs.Template.imageTemplateName)
+$getStatus.ProvisioningErrorCode
+$getStatus.ProvisioningErrorMessage
+#>
 
 
 # Build the image template
@@ -532,14 +538,14 @@ If($BuildImage){
         Write-Host "Done" -ForegroundColor Green
     }Catch{
         Write-Host ("Failed: {0}" -f $_.Exception.message) -BackgroundColor Red
-        If($CleanupFails){
+        If($CleanOnFailure){
             Remove-AzImageBuilderTemplate -ResourceGroupName $Settings.Resources.imageResourceGroup -InputObject $AzAIBTemplate -ErrorAction SilentlyContinue
         }
         Stop-Transcript;Break
     }
 
     #stop logging the loop. Logging will restart afterward.
-    Stop-Transcript
+    Stop-Transcript | Out-Null
 
     $AzAIBTemplate = Get-AzImageBuilderTemplate -ResourceGroupName $Settings.Resources.imageResourceGroup -Name $TemplateConfigs.Template.imageTemplateName
     Write-Host ('Building Azure Image Builder image [{0}]' -f $TemplateConfigs.Template.imageTemplateName) -NoNewline
@@ -553,30 +559,32 @@ If($BuildImage){
         ($AzAIBTemplate.LastRunStatusRunState -eq 'Succeeded' -or $AzAIBTemplate.LastRunStatusRunState -eq 'Failed')
     )
     $stopwatch.Stop()
-    $totalSecs = [math]::Round($stopwatch.Elapsed.TotalSeconds,0)
+    #$totalSecs = [math]::Round($stopwatch.Elapsed.TotalSeconds,0)
+    $ts = [timespan]::fromseconds($stopwatch.Elapsed.TotalSeconds)
+    $totalTime = ($ts.ToString("mm") + 'min, ' + $ts.ToString("ss") + 'sec')
 
     Write-Host '.' -ForegroundColor Gray
     Start-transcript "$PSScriptRoot\Logs\$LogfileName" -ErrorAction Stop -Append
     # these show the status the build
-    $LogExported = $false
+    $RemoveTemplate = $false
     Switch($AzAIBTemplate.LastRunStatusRunState){
-        'Succeeded' {Write-Host ("Done [{0} seconds]" -f $totalSecs) -ForegroundColor Green
-                    $ImageMsg = "Image created"
+        'Succeeded' {Write-Host ("Done [{0}]" -f $totalTime) -ForegroundColor Green
+                    $ImageMsg = "Image created!"
                     #grab the output data
-                    $result = Get-AzImageBuilderRunOutput -ImageTemplateName $TemplateConfigs.Template.imageTemplateName -ResourceGroupName $Settings.Resources.imageResourceGroup -RunOutputName $TemplateConfigs.buildOutputName
+                    $result = Get-AzImageBuilderRunOutput -ImageTemplateName $TemplateConfigs.Template.imageTemplateName -ResourceGroupName $Settings.Resources.imageResourceGroup -RunOutputName $buildOutputName
                     Get-AzImageBuilderRunOutput -InputObject $result | Select *
                     If($CreateVM){
-                        $VMName = Read-host "What will be the VM name?"
+                        $VMName = Read-host "What will be the VM name be?"
                         $Cred = Get-Credential
                         $ArtifactId = (Get-AzImageBuilderRunOutput -ImageTemplateName $TemplateConfigs.Template.imageTemplateName -ResourceGroupName $Settings.Resources.imageResourceGroup).ArtifactId
                         New-AzVM -ResourceGroupName $Settings.Resources.imageResourceGroup -Image $ArtifactId -Name $VMName -Credential $Cred -size Standard_B2s
                     }
-                    #no need to export logs on success
-                    $LogExported = $true
+                    #no need to keep template if success
+                    $RemoveTemplate = $true
                 }
         'Failed' {
-                $ImageMsg = "Image failed to create"
-                Write-Host ("Failed [{0} seconds]: {1}" -f $totalSecs,$AzAIBTemplate.LastRunStatusMessage) -BackgroundColor Red
+                $ImageMsg = "Image failed to create!"
+                Write-Host ("Failed after [{0}]: {1}" -f $totalTime,$AzAIBTemplate.LastRunStatusMessage) -BackgroundColor Red
                 $AzAIBTemplate.LastRunStatusMessage -match 'location:\s+(http[s]?)(:\/\/)([^\s,]+)' | Out-Null
                 $CustomizationLogUri = 'https://' + ($Matches[3] -replace '\.$','')
                 $ErrorStorageAccount = $Matches[3].split('/')[0]
@@ -589,9 +597,10 @@ If($BuildImage){
                     Invoke-WebRequest $CustomizationLogUri -OutFile "$PSScriptRoot\Logs\$($LogfileName.replace('buildaibtemplate','customization'))"
                     Write-Host "Done" -ForegroundColor Green
                     #Write-Host ('View [telemetry] logs for errors: {0}' -f ("$PSScriptRoot\Logs\$($LogfileName.replace('buildaibtemplate','customization'))")) -ForegroundColor Yellow
-                    $LogExported = $true
+                    $RemoveTemplate = $true
                 }
                 Catch{
+                    Stop-Transcript;Break
                     Write-Host ("Failed: {0}" -f $_.Exception.message) -BackgroundColor Red
                     Write-Host ('To view AIB packer log:')
                     Write-Host ('   Navigate to storage account: ') -NoNewline
@@ -604,6 +613,7 @@ If($BuildImage){
                     Write-Host ('{0}' -f $BlobFile) -ForegroundColor Yellow
                     Write-Host ('   Search for (Telemetry) ') -ForegroundColor Yellow
                 }
+
         }
     }
 }
@@ -611,14 +621,13 @@ If($BuildImage){
 
 # Remove the template (this removes the storage account as well!)
 #=======================================================
-If($LogExported){
-    #TEST $Settings = Get-Content ".\Control\Settings-ritracyi-gov.json" -Raw | ConvertFrom-Json
-    #TEST $TemplateConfigs = Get-Content ".\Control\Win10avdTestImage\aib.json" -Raw | ConvertFrom-Json
+If($RemoveTemplate){
+
     If($AzAIBTemplate = Get-AzImageBuilderTemplate -ResourceGroupName $Settings.Resources.imageResourceGroup -Name $TemplateConfigs.Template.imageTemplateName -ErrorAction SilentlyContinue){
         Try{
-            Write-Host ("{1}, Removing Azure Image template [{0}]..." -f $TemplateConfigs.ImageDefinition.Name,$ImageMsg) -ForegroundColor Yellow -NoNewline
+            Write-Host ("{1} Removing Azure Image template [{0}]..." -f $TemplateConfigs.ImageDefinition.Name,$ImageMsg) -ForegroundColor Yellow -NoNewline
             Remove-AzImageBuilderTemplate -ResourceGroupName $Settings.Resources.imageResourceGroup -ImageTemplateName $TemplateConfigs.Template.imageTemplateName | Out-Null
-            Write-Host "Removed" -ForegroundColor Green
+            Write-Host "Done" -ForegroundColor Green
         }
         Catch{
             Write-Host ("Failed: {0}" -f $_.Exception.message) -BackgroundColor Red

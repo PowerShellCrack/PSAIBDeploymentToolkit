@@ -6,26 +6,34 @@ The next process is to create an automated process that will copy applications, 
 
 # THIS IS A WORK IN PROGRESS
 
-
+## Image Tests
 These are the images that have been planned or have been tested with this toolkit and the results
 
 Image|Description|Included|Tested|Results|Comments
 --|--|--|--|--|--
-Win10avdMarketImage |Gen2 Marketplace VM no updates. Just to see if AIB worked | 21h2  | Yes | **Success** |
+Win10avdMarketImage |Gen2 Marketplace VM no updates. Just to see if AIB worked | 21h2  | Yes | **Success** | 30minutes
 Win10avdLatestUpdates | Gen2 Marketplace VM with updates set to run. | 21h2, Updates | Yes | **Success**|
 Win10avdO365Image | Gen2 Marketplace VM with M365 apps and updates set to run. | 21h2, Office 365, Updates | Yes | **Success**
-Win10avdTestImage | Gen2 Marketplace VM with two apps (Foxit and Notpadd++) and updates set to run.| 21h2, Foxit, Notpadd++, Updates |Yes|**Success**| 32min build time
+Win10avdTestImage | Gen2 Marketplace VM with two apps (Foxit and Notepad++)| 21h2, Foxit, Notepad++ |Yes|**Success**| 32min build time
+Win10avdTest2Image | Gen2 Marketplace VM with branding and multiple apps and updates set to run.| 21h2, Branding, Foxit, Notepad++, Adobe Reader, LAPS, Microsoft News Appx, Updates |Yes|**Success but failed**| 11min build time. Image completed with no errors, but the distribution timed out.
 Win10avdSimpleImage | Gen2 Marketplace VM with branding script (wallpaper and lockscreen) and updates set to run.| 21h2, Branding, Updates |Yes|**Success**| Needs work on branding script
 Win10avdBaseImage| Gen2 Marketplace VM; added scripts to install Microsoft 365 apps to latest version in Multisession mode with policy configured | 21h2, Office 365, Teams, Fslogix, Onedrive, Updates, Optimizations, VM Preparation | Yes | Failed: Operation timed out | Some issues with application scripts and installer for modules; added PSGallery trust and Nuget update for anything PowerShell calls
 Win10avdBaselineImage| Gen2 Marketplace VM; added scripts to install Microsoft 365 apps to latest version in Multisession mode with policy configured, and baseline software | 21h2, Office 365, Teams, Fslogix, Onedrive, Adobe Acrobat DC, Laps, Microsoft News app, Updates, Optimizations, VM Preparation |  |
 Win10avdHardenedImage| Gen2 Marketplace VM; added scripts to install Microsoft 365 apps to latest version in Multisession mode with STIG policy configured | 21h2, Office 365, Teams, Fslogix, Onedrive, Updates, Optimizations, VM Preparation, STIGS | No ||Working on STIG scripts
 
 
+## Apps tested
+Name|Version|Image Association|Install Type|Results|Comments
+--|--|--|--|--|--
+FoxitPDFReader | 1201 | Win10avdTestImage | Msi with arguments | exit 0 | Used inline command with sas token for zip download
+Notepad Plus Plus | 8.4.4| Win10avdTestImage | exe with argument | exit 0 | Used inline command with sas token for zip download
+
+
 ## TODOs
 
-- Looking into developing a User Interface to allow easier configurations.
-- Looking at building language pack support using the  _Packages_ folder (https://docs.microsoft.com/en-us/azure/virtual-desktop/language-packs)
-- Build a script to convert MDT environment to AIB environment. Basically to copy the Applications,templates,and scripts to a blob storage. Structure should look be in a format like:
+- Develop a MDT-like User Interface to allow easier configurations.
+- Build language pack support using the _Packages_ folder (https://docs.microsoft.com/en-us/azure/virtual-desktop/language-packs)
+- Build a script to convert MDT environment to AIB environment. Basically convert TS.xml into a aib.json and copy the applications,templates,and scripts to a blob storage. Structure would be in a format like:
 
   eg. **\<type\>-\<productname\>-\<version | latest\>**
 
@@ -40,17 +48,16 @@ Win10avdHardenedImage| Gen2 Marketplace VM; added scripts to install Microsoft 3
             - application-onedrive-latest
             - application-teams-latest
 
-- Version control. Currently the version is built automatically.
-
+- Develop a method to document definition version (after each build).
+- Version cleanup
 
 ## Prereqs
 
-- Azure Image Builder registered
+- Azure Image Builder registered in tenant (Azure GCCH specifically)
 - Azure Managed Identity
-- Blob Container with Anonymous & public access
+- Blob Container with Anonymous & public access or SAS token
 
-
-## recommended
+## contributing
 
 If you are contributing or using the code. Please create a copy of the _Settings.json_ file in control folder and name it something like _Settings-\<user\>\.json_. (keep the **Settings-** in the filename); this file will be ignored during pull request.
 > You don't want your secrets to be public.
@@ -73,7 +80,7 @@ There is a _Logs_ folder that will contain a dated transcript of the AIB sequenc
 
 ## **aib.json** auto formatting
 
-There is an _aib.json_ (...kind of like the TS.xml in MDT. :grin:) file in each sequence is a custom format designed decide what template to use and to simplify the complex deployment of scripts & applications for AIB.
+There is an _aib.json_ (...kind of like the TS.xml in MDT. :grin:) file in each control sequence. It is in a custom format designed to simplify the complex deployment of scripts & applications for AIB.
 
 1. _Example:_ To deploy a branding customization that has both theme, wallpaper, and lockscreen requires several customize steps will need to be set:
     - 3x copy steps
@@ -340,7 +347,7 @@ Supported parameters are:
 - **arguments** – Optional, Provide the parameters need to run silently. The _\<destination\>_ designated allows for additional path support
 
 ### Example 1
-_Download script and run it._
+_run script._ Assume its downloaded already
 ```json
 "customSequence":  [
         {
@@ -446,7 +453,7 @@ Supported parameters are:
     ]
 ```
 
-## References
+# References
 
 - https://github.com/danielsollondon/azvmimagebuilder/tree/master/quickquickstarts/0_Creating_a_Custom_Windows_Managed_Image
 - https://docs.microsoft.com/en-us/azure/virtual-machines/linux/image-builder-json?tabs=azure-powershell
