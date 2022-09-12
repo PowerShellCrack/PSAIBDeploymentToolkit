@@ -90,6 +90,38 @@ If($ChangeAvatar){
     }
 }
 
+##* |			Registry Branding to System					|
+##* =========================================================
+##* # OEM Registry Keys
+If($AddSupportInfo){
+    New-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\OEMInformation" -Name 'Manufacturer' -PropertyType String -Value "$Manufacturer" -Force
+    New-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\OEMInformation" -Name 'SupportHours' -PropertyType String -Value "$SupportHours" -Force
+    New-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\OEMInformation" -Name 'SupportPhone' -PropertyType String -Value "$SupportPhone" -Force
+    New-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\OEMInformation" -Name 'SupportURL' -PropertyType String -Value "$SupportURL" -Force
+}
+
+##* # Personalization Registry Keys
+New-Item "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Personalization" -ItemType Directory -ErrorAction SilentlyContinue
+New-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Personalization" -Name 'NoChangingLockScreen' -PropertyType DWord -Value "1" -Force
+New-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Personalization" -Name 'LockScreenImage' -PropertyType String -Value "$LockscreenPath\LockScreen.jpg" -Force
+New-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Name 'DisableLogonBackgroundImage' -PropertyType DWord -Value 1 -Force
+
+##* First Login Animation
+New-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -Name 'EnableFirstLogonAnimation' -PropertyType DWord -Value 0 -Force
+
+##* LOGON SCREEN SETTINGS
+#New-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" -Name 'DisableCAD' -PropertyType DWord -Value 0 -Force
+#New-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Policies\System" -Name 'DontDisplayLastUserName' -PropertyType DWord -Value 1 -Force
+
+##* ##*ove Autorun
+New-Item "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\IniFileMapping\Autorun.inf" -ItemType Directory -ErrorAction SilentlyContinue
+Set-Item -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\IniFileMapping\Autorun.inf" -Value "@SYS:DoesNotExist" -Force
+New-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer" -Name 'HonorAutorunSetting' -PropertyType DWord -Value 1 -Force
+New-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer" -Name 'NoDriveAutoRun' -PropertyType DWord -Value 67108863 -Force
+New-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer" -Name 'NoDriveTypeAutoRun' -PropertyType DWord -Value 255 -Force
+New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\Cdrom" -Name 'AutoRun' -PropertyType DWord -Value 0 -Force
+
+
 ##* |			Registry Branding to Current logged on User				|
 ##* =====================================================================
 ##* Set Extension Associations
@@ -134,11 +166,11 @@ New-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Policies
 New-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" -Name 'NoDriveAutoRun' -PropertyType DWord -Value 67108863 -Force
 New-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" -Name 'NoDriveTypeAutoRun' -PropertyType DWord -Value 255 -Force
 ##* Disable Action Center Icon
-New-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" -Name 'HideSCAHealth' -PropertyType DWord -Value 1 -Force
+#New-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" -Name 'HideSCAHealth' -PropertyType DWord -Value 1 -Force
 
 ##* Show CDROM drive even when empty
-New-Item "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -ItemType Directory -ErrorAction SilentlyContinue
-New-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name '"HideDrivesWithNoMedia"' -PropertyType DWord -Value 0 -Force
+##New-Item "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -ItemType Directory -ErrorAction SilentlyContinue
+#New-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name '"HideDrivesWithNoMedia"' -PropertyType DWord -Value 0 -Force
 
 ##* ##*ove 'shortcut to' text
 New-Item "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer" -ItemType Directory -ErrorAction SilentlyContinue
@@ -188,16 +220,16 @@ IF($LoadDefaultHive){
     }
 
     ##* Add My Documents and Computer to Desktop
-    New-ItemProperty -Path "HKU:\Temp\Software\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\NewStartPanel" -Name '{59031a47-3f72-44a7-89c5-5595fe6b30ee}' -PropertyType DWord -Value 0 -Force
-    New-ItemProperty -Path "HKU:\Temp\Software\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\NewStartPanel" -Name '{20D04FE0-3AEA-1069-A2D8-08002B30309D}' -PropertyType DWord -Value 0 -Force
-    MultiStringDWord
+    #New-ItemProperty -Path "HKU:\Temp\Software\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\NewStartPanel" -Name '{59031a47-3f72-44a7-89c5-5595fe6b30ee}' -PropertyType DWord -Value 0 -Force
+    #New-ItemProperty -Path "HKU:\Temp\Software\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\NewStartPanel" -Name '{20D04FE0-3AEA-1069-A2D8-08002B30309D}' -PropertyType DWord -Value 0 -Force
+
     ##* Disable Action Center Icon
-    New-ItemProperty -Path "HKU:\Temp\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" -Name 'HideSCAHealth' -PropertyType DWord -Value 1 -Force
+    #New-ItemProperty -Path "HKU:\Temp\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" -Name 'HideSCAHealth' -PropertyType DWord -Value 1 -Force
 
     ##* Show CDROM drive even when empty
-    New-ItemProperty -Path "HKU:\Temp\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name '"HideDrivesWithNoMedia"' -PropertyType DWord -Value 0 -Force
+    #New-ItemProperty -Path "HKU:\Temp\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name '"HideDrivesWithNoMedia"' -PropertyType DWord -Value 1 -Force
 
-    ##* ##*ove Autorun
+    ##* Remove Autorun
     Remove-Item "HKU:\Temp\Software\Microsoft\Windows\CurrentVersion\Explorer\MountPoints2" -Force -ErrorAction SilentlyContinue
     New-Item -Path "HKU:\Temp\Software\Microsoft\Windows\CurrentVersion\Explorer\MountPoints2" -ItemType Directory -ErrorAction SilentlyContinue
 
@@ -213,7 +245,7 @@ IF($LoadDefaultHive){
     New-ItemProperty -Path "HKEY_USERS\.DEFAULT\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" -Name 'NoDriveAutoRun' -PropertyType DWord -Value 67108863 -Force
     New-ItemProperty -Path "HKEY_USERS\.DEFAULT\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" -Name 'NoDriveTypeAutoRun' -PropertyType DWord -Value 255 -Force
 
-    ##* ##*ove 'shortcut to' text
+    ##* ##Remove 'shortcut to' text
     New-ItemProperty -Path "HKU:\Temp\Software\Microsoft\Windows\CurrentVersion\Explorer" -Name 'link' -PropertyType Binary -Value 00000000 -Force
 
     reg unload "HKU:\Temp"
@@ -225,39 +257,5 @@ IF($LoadDefaultHive){
 }
 
 
-##* |			Registry Branding to System					|
-##* =========================================================
-##* # OEM Registry Keys
-If($AddSupportInfo){
-    New-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\OEMInformation" -Name 'Manufacturer' -PropertyType String -Value "$Manufacturer" -Force
-    New-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\OEMInformation" -Name 'SupportHours' -PropertyType String -Value "$SupportHours" -Force
-    New-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\OEMInformation" -Name 'SupportPhone' -PropertyType String -Value "$SupportPhone" -Force
-    New-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\OEMInformation" -Name 'SupportURL' -PropertyType String -Value "$SupportURL" -Force
-}
-
-
-##* # Personalization Registry Keys
-New-Item "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Personalization" -ItemType Directory -ErrorAction SilentlyContinue
-New-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Personalization" -Name 'NoChangingLockScreen' -PropertyType DWord -Value "1" -Force
-New-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Personalization" -Name 'LockScreenImage' -PropertyType String -Value "$LockscreenPath\LockScreen.jpg" -Force
-New-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Name 'DisableLogonBackgroundImage' -PropertyType DWord -Value 1 -Force
-
-##* First Login Animation
-New-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -Name 'EnableFirstLogonAnimation' -PropertyType DWord -Value 0 -Force
-
-##* LOGON SCREEN SETTINGS
-#New-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" -Name 'DisableCAD' -PropertyType DWord -Value 0 -Force
-#New-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Policies\System" -Name 'DontDisplayLastUserName' -PropertyType DWord -Value 1 -Force
-
-##* ##*ove Autorun
-New-Item "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\IniFileMapping\Autorun.inf" -ItemType Directory -ErrorAction SilentlyContinue
-Set-Item -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\IniFileMapping\Autorun.inf" -Value "@SYS:DoesNotExist" -Force
-New-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer" -Name 'HonorAutorunSetting' -PropertyType DWord -Value 1 -Force
-New-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer" -Name 'NoDriveAutoRun' -PropertyType DWord -Value 67108863 -Force
-New-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer" -Name 'NoDriveTypeAutoRun' -PropertyType DWord -Value 255 -Force
-New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\Cdrom" -Name 'AutoRun' -PropertyType DWord -Value 0 -Force
-
-##* Set Networking Location
-New-ItemProperty -Path "HKLM:\System\CurrentControlSet\Services\NlaSvc\Parameters\Internet" -Name 'EnableActiveProbing' -PropertyType DWord -Value 0 -Force
 
 Write-Host "Completed Branding script" -ForegroundColor Green

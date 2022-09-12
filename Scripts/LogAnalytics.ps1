@@ -117,8 +117,8 @@ Function Write-AIBStatus {
     $StatusData | Add-Member -MemberType NoteProperty -Name "ImageName" -Value $ImageName -Force
     $StatusData | Add-Member -MemberType NoteProperty -Name "ImageVersion" -Value $ImageVersion -Force
     $StatusData | Add-Member -MemberType NoteProperty -Name "JsonTemplate" -Value $JsonTemplate -Force
-    $StatusData | Add-Member -MemberType NoteProperty -Name "CustomizationCount" -Value $CustomizationCount -Force
-    $StatusData | Add-Member -MemberType NoteProperty -Name "CustomizationSteps" -Value $CustomizationList -Force
+    $StatusData | Add-Member -MemberType NoteProperty -Name "CustomizationSteps" -Value $CustomizationCount -Force
+    #$StatusData | Add-Member -MemberType NoteProperty -Name "CustomizationList" -Value $CustomizationList -Force
     $StatusData | Add-Member -MemberType NoteProperty -Name "Start" -Value $StartDateTime -Force
     $StatusData | Add-Member -MemberType NoteProperty -Name "End" -Value $EndDateTime -Force
     $StatusData | Add-Member -MemberType NoteProperty -Name "ElapsedTime" -Value $TotalTime -Force

@@ -187,8 +187,8 @@ Function ConvertTo-AIBCustomization{
                     If(($CustomData.sasToken.length -gt 0) -and ([System.IO.Path]::GetExtension($file) -match "zip$")){
                         #Step 1,2,3: create working directory, Copy file using azcopy, and extract
                         $InlineCommands = @(
-                            "$FileCopyDest\azcopy.exe copy 'https://$BlobUrl/application-$($CustomData.workingDirectory.ToLower())/$($file)?$($CustomData.sasToken)' $FileCopyDest\Applications\$($CustomData.workingDirectory)\$file",
-                            "Expand-Archive -Path '$FileCopyDest\Applications\$($CustomData.workingDirectory)\$file' -DestinationPath '$FileCopyDest\Applications\$($CustomData.workingDirectory)' -Force"
+                            "$FileCopyDest\azcopy.exe copy `"https://$BlobUrl/application-$($CustomData.workingDirectory.ToLower())/$($file)?$($CustomData.sasToken)`" `"$FileCopyDest\Applications\$($CustomData.workingDirectory)\$file`"",
+                            "Expand-Archive -Path `"$FileCopyDest\Applications\$($CustomData.workingDirectory)\$file`" -DestinationPath `"$FileCopyDest\Applications\$($CustomData.workingDirectory)`" -Force"
                         )
 
                         $object = New-Object -TypeName PSObject
@@ -214,7 +214,7 @@ Function ConvertTo-AIBCustomization{
                             $CheckSum = Get-FileHash ('.\Applications\' + $CustomData.workingDirectory + '\' + $file) | Select -ExpandProperty Hash
                             $object | Add-Member -MemberType NoteProperty -Name 'sha256Checksum' -Value $CheckSum
                         }
-                        If($IncludePoshCmd){$object | Add-Member -MemberType NoteProperty -Name 'PoshCommand' -Value "Invoke-WebRequest 'https://$BlobURL/application-$($CustomData.workingDirectory.ToLower())/$file' -OutFile '$FileCopyDest\Applications\$($CustomData.workingDirectory)\$file'"}
+                        If($IncludePoshCmd){$object | Add-Member -MemberType NoteProperty -Name 'PoshCommand' -Value "Invoke-WebRequest `"https://$BlobURL/application-$($CustomData.workingDirectory.ToLower())/$file`" -OutFile `"$FileCopyDest\Applications\$($CustomData.workingDirectory)\$file`""}
                         $ObjectArray += $object
 
                         Write-Verbose ("Added file uri downloader: {0}" -f ($FileCopyDest + '\' + $CustomData.workingDirectory + '\' + $file))
@@ -244,7 +244,7 @@ Function ConvertTo-AIBCustomization{
                                 $CheckSum = Get-FileHash ('.\Applications\' + $CustomData.workingDirectory + '\' + $CustomData.executable) | Select -ExpandProperty Hash
                                 $object | Add-Member -MemberType NoteProperty -Name 'sha256Checksum' -Value $CheckSum
                             }
-                            If($IncludePoshCmd){$object | Add-Member -MemberType NoteProperty -Name 'PoshCommand' -Value "Invoke-WebRequest 'https://$BlobURL/application-$($CustomData.workingDirectory.ToLower())/$($CustomData.executable)' -OutFile '$FileCopyDest\Applications\$($CustomData.workingDirectory)\$($CustomData.executable)'"}
+                            If($IncludePoshCmd){$object | Add-Member -MemberType NoteProperty -Name 'PoshCommand' -Value "Invoke-WebRequest `"https://$BlobURL/application-$($CustomData.workingDirectory.ToLower())/$($CustomData.executable)`" -OutFile `"$FileCopyDest\Applications\$($CustomData.workingDirectory)\$($CustomData.executable)`""}
                             $ObjectArray += $object
 
                             #Step 2b: Gen inline with argument for ps1 call
@@ -279,8 +279,8 @@ Function ConvertTo-AIBCustomization{
                                 $object | Add-Member -MemberType NoteProperty -Name 'validExitCodes' -Value $CustomData.exitCodes
                             }
                             If($IncludePoshCmd){$object | Add-Member -MemberType NoteProperty -Name 'PoshCommand' -Value @(
-                                    "Invoke-WebRequest 'https://$BlobURL/application-$($CustomData.workingDirectory.ToLower())/$($CustomData.executable)' -OutFile '$FileCopyDest\Applications\$($CustomData.workingDirectory)\$($CustomData.executable)'",
-                                    "& $FileCopyDest\Applications\$($CustomData.workingDirectory)\$($CustomData.executable)"
+                                    "Invoke-WebRequest `"https://$BlobURL/application-$($CustomData.workingDirectory.ToLower())/$($CustomData.executable)`" -OutFile `"$FileCopyDest\Applications\$($CustomData.workingDirectory)\$($CustomData.executable)`"",
+                                    "& `"$FileCopyDest\Applications\$($CustomData.workingDirectory)\$($CustomData.executable)`""
                                 )
                             }
                             $ObjectArray += $object
@@ -302,7 +302,7 @@ Function ConvertTo-AIBCustomization{
                             $CheckSum = Get-FileHash ('.\Applications\' + $CustomData.workingDirectory + '\' + $CustomData.executable) | Select -ExpandProperty Hash
                             $object | Add-Member -MemberType NoteProperty -Name 'sha256Checksum' -Value $CheckSum
                         }
-                        If($IncludePoshCmd){$object | Add-Member -MemberType NoteProperty -Name 'PoshCommand' -Value "Invoke-WebRequest 'https://$BlobURL/application-$($CustomData.workingDirectory.ToLower())/$($CustomData.executable)' -OutFile '$FileCopyDest\Applications\$($CustomData.workingDirectory)\$($CustomData.executable)'"}
+                        If($IncludePoshCmd){$object | Add-Member -MemberType NoteProperty -Name 'PoshCommand' -Value "Invoke-WebRequest `"https://$BlobURL/application-$($CustomData.workingDirectory.ToLower())/$($CustomData.executable)`" -OutFile `"$FileCopyDest\Applications\$($CustomData.workingDirectory)\$($CustomData.executable)`""}
                         $ObjectArray += $object
 
                         Write-Verbose ('Added {0} downloader to uri: https://' + $BlobURL + '/application-' + $CustomData.workingDirectory.ToLower() + '/' + $CustomData.executable,([System.IO.Path]::GetExtension($CustomData.executable)))
@@ -378,8 +378,8 @@ Function ConvertTo-AIBCustomization{
                     Foreach($appx in $CustomData.appxDependency | Where {$_ -ne $CustomData.appxBundle}){
                         #to use Blob shared access token, you must use Azcopy with sas token instead of uri copies
                         $InlineCommands = @(
-                            "$FileCopyDest\azcopy.exe copy 'https://$BlobUrl/application-$($CustomData.workingDirectory.ToLower())/$($appx)?$($CustomData.sasToken)' $FileCopyDest\ModernApps\$($CustomData.workingDirectory)\$appx",
-                            "Expand-Archive -Path '$FileCopyDest\ModernApps\$($CustomData.workingDirectory)\$appx' -DestinationPath '$FileCopyDest\ModernApps\$($CustomData.workingDirectory)' -Force"
+                            "$FileCopyDest\azcopy.exe copy `"https://$BlobUrl/application-$($CustomData.workingDirectory.ToLower())/$($appx)?$($CustomData.sasToken)`" `"$FileCopyDest\ModernApps\$($CustomData.workingDirectory)\$appx`"",
+                            "Expand-Archive -Path `"$FileCopyDest\ModernApps\$($CustomData.workingDirectory)\$appx`" -DestinationPath `"$FileCopyDest\ModernApps\$($CustomData.workingDirectory)`" -Force"
                         )
 
                         $object = New-Object -TypeName PSObject
@@ -413,7 +413,7 @@ Function ConvertTo-AIBCustomization{
                             $CheckSum = Get-FileHash ('.\Application' + $CustomData.workingDirectory + '\' + $appx) | Select -ExpandProperty Hash
                             $object | Add-Member -MemberType NoteProperty -Name 'sha256Checksum' -Value $CheckSum
                         }
-                        If($IncludePoshCmd){$object | Add-Member -MemberType NoteProperty -Name 'PoshCommand' -Value "Invoke-WebRequest ""https://$BlobURL/application-$($CustomData.workingDirectory.ToLower())/$appx"" -OutFile ""$FileCopyDest\ModernApps\$($CustomData.workingDirectory)\$appx"""}
+                        If($IncludePoshCmd){$object | Add-Member -MemberType NoteProperty -Name 'PoshCommand' -Value "Invoke-WebRequest `"https://$BlobURL/application-$($CustomData.workingDirectory.ToLower())/$appx`" -OutFile `"$FileCopyDest\ModernApps\$($CustomData.workingDirectory)\$appx`""}
                         $ObjectArray += $object
 
                         Write-Verbose ("Added appx uri downloader: {0}" -f ($FileCopyDest + '\' + $CustomData.workingDirectory + '\' + $appx))
@@ -424,7 +424,7 @@ Function ConvertTo-AIBCustomization{
                 $DependencyArgs =( $CustomData.appxDependency | %{'/DependencyPackagePath:"' + $FileCopyDest + '\ModernApps\' + $CustomData.workingDirectory + '\' + $_ + '"'}) -join ' '
 
                 $InlineCommands = @(
-                    "dism /online /add-provisionedappxpackage /PackagePath:""$FileCopyDest\ModernApps\$($CustomData.workingDirectory)\$($CustomData.appxBundle)"" $DependencyArgs /LicensePath:""$FileCopyDest\ModernApps\$($CustomData.workingDirectory)\$($CustomData.appxLicense)"""
+                    "dism /online /add-provisionedappxpackage /PackagePath:`"$FileCopyDest\ModernApps\$($CustomData.workingDirectory)\$($CustomData.appxBundle)`" $DependencyArgs /LicensePath:`"$FileCopyDest\ModernApps\$($CustomData.workingDirectory)\$($CustomData.appxLicense)`""
                 )
                 $object = New-Object -TypeName PSObject
                 $object | Add-Member -MemberType NoteProperty -Name 'type' -Value "PowerShell"
@@ -443,8 +443,8 @@ Function ConvertTo-AIBCustomization{
             If($CustomData.sasToken.length -gt 0){
                 #Step 1,2,3: create working directory, Copy file using azcopy, and extract
                 $InlineCommands = @(
-                    "$FileCopyDest\azcopy.exe copy 'https://$BlobUrl/archive-$($CustomData.workingDirectory.ToLower())/$($CustomData.archiveFile)?$($CustomData.sasToken)' $FileCopyDest\Archives\$($CustomData.workingDirectory)\$($CustomData.archiveFile)",
-                    "Expand-Archive -Path '$FileCopyDest\Archives\$($CustomData.workingDirectory)\$($CustomData.archiveFile)' -DestinationPath '$($CustomData.destination)' -Force"
+                    "$FileCopyDest\azcopy.exe copy `"https://$BlobUrl/archive-$($CustomData.workingDirectory.ToLower())/$($CustomData.archiveFile)?$($CustomData.sasToken)`" `"$FileCopyDest\Archives\$($CustomData.workingDirectory)\$($CustomData.archiveFile)`"",
+                    "Expand-Archive -Path `"$FileCopyDest\Archives\$($CustomData.workingDirectory)\$($CustomData.archiveFile)`" -DestinationPath `"$($CustomData.destination)`" -Force"
                 )
 
                 $object = New-Object -TypeName PSObject
@@ -470,12 +470,12 @@ Function ConvertTo-AIBCustomization{
                     $CheckSum = Get-FileHash ('.\Archives\' + $CustomData.workingDirectory + '\' + $CustomData.archiveFile) | Select -ExpandProperty Hash
                     $object | Add-Member -MemberType NoteProperty -Name 'sha256Checksum' -Value $CheckSum
                 }
-                If($IncludePoshCmd){$object | Add-Member -MemberType NoteProperty -Name 'PoshCommand' -Value "Invoke-WebRequest 'https://$BlobURL/archive-$($CustomData.workingDirectory.ToLower())/$($CustomData.archiveFile)' -OutFile '$FileCopyDest\Archives\$($CustomData.workingDirectory)\$($CustomData.archiveFile)'"}
+                If($IncludePoshCmd){$object | Add-Member -MemberType NoteProperty -Name 'PoshCommand' -Value "Invoke-WebRequest `"https://$BlobURL/archive-$($CustomData.workingDirectory.ToLower())/$($CustomData.archiveFile)`" -OutFile `"$FileCopyDest\Archives\$($CustomData.workingDirectory)\$($CustomData.archiveFile)`""}
                 $ObjectArray += $object
 
                 #Step 3. Extract file
                 $InlineCommands = @(
-                    "Expand-Archive -Path '$FileCopyDest\Archives\$($CustomData.workingDirectory)\$($CustomData.archiveFile)' -DestinationPath '$($CustomData.destination)' -Force"
+                    "Expand-Archive -Path `"$FileCopyDest\Archives\$($CustomData.workingDirectory)\$($CustomData.archiveFile)`" -DestinationPath `"$($CustomData.destination)`" -Force"
                 )
                 $object = New-Object -TypeName PSObject
                 $object | Add-Member -MemberType NoteProperty -Name 'type' -Value "PowerShell"
@@ -514,23 +514,23 @@ Function ConvertTo-AIBCustomization{
                         $object | Add-Member -MemberType NoteProperty -Name 'sha256Checksum' -Value $CheckSum
                     }
                     If($IncludePoshCmd){$object | Add-Member -MemberType NoteProperty -Name 'PoshCommand' -Value @(
-                            "Invoke-WebRequest ""https://$BlobURL/package-$($CustomData.languageLocale.ToLower())/$package"" -OutFile ""$FileCopyDest\Packages\$($CustomData.languageLocale)\$package"""
+                            "Invoke-WebRequest `"https://$BlobURL/package-$($CustomData.languageLocale.ToLower())/$package`" -OutFile `"$FileCopyDest\Packages\$($CustomData.languageLocale)\$package`""
                         )
                     }
                     $ObjectArray += $object
                 }
-                $ProvisionCommand += "Add-WindowsPackage -Online -PackagePath ""$FileCopyDest\Packages\$($CustomData.languageLocale)\$package"""
+                $ProvisionCommand += "Add-WindowsPackage -Online -PackagePath `"$FileCopyDest\Packages\$($CustomData.languageLocale)\$package`""
             }
 
             #Step 3. Extract file
             $InlineCommands = @(
-                "Add-AppProvisionedPackage -Online -PackagePath ""$FileCopyDest\Packages\$($CustomData.LanguageLocale)\LanguageExperiencePack.$($CustomData.languageLocale.ToLower()).Neutral.appx"" -LicensePath ""$FileCopyDest\Packages\$($CustomData.LanguageLocale)\License.xml"""
+                "Add-AppProvisionedPackage -Online -PackagePath `"$FileCopyDest\Packages\$($CustomData.LanguageLocale)\LanguageExperiencePack.$($CustomData.languageLocale.ToLower()).Neutral.appx`" -LicensePath `"$FileCopyDest\Packages\$($CustomData.LanguageLocale)\License.xml`""
             )
 
             $InlineCommands += $ProvisionCommand
             $InlineCommands += @(
                 "`$LanguageList = Get-WinUserLanguageList",
-                "`$LanguageList.Add(""$($CustomData.LanguageLocale.ToLower())"")",
+                "`$LanguageList.Add(`"$($CustomData.LanguageLocale.ToLower())`")",
                 "Set-WinUserLanguageList `$LanguageList -force"
             )
 
@@ -555,8 +555,8 @@ Function ConvertTo-AIBCustomization{
                 $object | Add-Member -MemberType NoteProperty -Name 'validExitCodes' -Value $CustomData.exitCodes
             }
             If($IncludePoshCmd){$object | Add-Member -MemberType NoteProperty -Name 'PoshCommand' -Value @(
-                    "Invoke-WebRequest 'https://$BlobURL/scripts/$($CustomData.scriptfile)' -OutFile '$FileCopyDest\Scripts\$($CustomData.scriptfile)'"
-                    "& $FileCopyDest\Scripts\$($CustomData.scriptfile)"
+                    "Invoke-WebRequest `"https://$BlobURL/scripts/$($CustomData.scriptfile)`" -OutFile `"$FileCopyDest\Scripts\$($CustomData.scriptfile)`""
+                    "& `"$FileCopyDest\Scripts\$($CustomData.scriptfile)`""
                 )
             }
             $ObjectArray += $object
@@ -567,7 +567,7 @@ Function ConvertTo-AIBCustomization{
             $object | Add-Member -MemberType NoteProperty -Name 'type' -Value "WindowsRestart"
             $object | Add-Member -MemberType NoteProperty -Name 'restartCheckCommand' -Value "write-host 'restarting after $($CustomData.name)'"
             $object | Add-Member -MemberType NoteProperty -Name 'restartTimeout' -Value "5m"
-            If($IncludePoshCmd){$object | Add-Member -MemberType NoteProperty -Name 'PoshCommand' -Value "Restart-Computer -Timeout 5 -Force"}
+            If($IncludePoshCmd){$object | Add-Member -MemberType NoteProperty -Name 'PoshCommand' -Value "Restart-Computer -Timeout 5 -Wait -Force -WhatIf"}
             $ObjectArray += $object
         }
 
@@ -589,7 +589,7 @@ Function ConvertTo-AIBCustomization{
     #Step 5. Gen app working directory deletion
     If($Cleanup){
         $InlineCommands = @(
-            "Remove-Item -path '$FileCopyDest\$($CustomData.type)s\$($CustomData.workingDirectory)' -recurse -ErrorAction SilentlyContinue"
+            "Remove-Item -path `"$FileCopyDest\$($CustomData.type)s\$($CustomData.workingDirectory)`" -recurse -ErrorAction SilentlyContinue"
         )
         $object = New-Object -TypeName PSObject
         $object | Add-Member -MemberType NoteProperty -Name 'type' -Value "PowerShell"
@@ -613,7 +613,7 @@ Function ConvertTo-AIBCustomization{
 
         If($CustomData.restartTimeout.length -gt 0){
             $object | Add-Member -MemberType NoteProperty -Name 'restartTimeout' -Value $CustomData.restartTimeout
-            If($IncludePoshCmd){$object | Add-Member -MemberType NoteProperty -Name 'PoshCommand' -Value "Restart-Computer -Timeout $($CustomData.restartTimeout) -Force"}
+            If($IncludePoshCmd){$object | Add-Member -MemberType NoteProperty -Name 'PoshCommand' -Value "Restart-Computer -Timeout $($CustomData.restartTimeout) -Wait -Force -WhatIf"}
         }ElseIf($CustomData.type -eq 'WindowsUpdate'){
             $object | Add-Member -MemberType NoteProperty -Name 'restartTimeout' -Value "10m"
             If($IncludePoshCmd){$object | Add-Member -MemberType NoteProperty -Name 'PoshCommand' -Value "Restart-Computer -Timeout 10 -Force"}
@@ -664,17 +664,17 @@ Function ConvertFrom-CustomSequence{
     If($SequenceData.type -match "Application|Archive|Script|Package|ModernApp"){
         $Name = "Build working directories"
         $InlineCommands = @(
-                "New-Item '$FileCopyDest' -ItemType Directory -ErrorAction SilentlyContinue"
+                "New-Item `"$FileCopyDest`" -ItemType Directory -ErrorAction SilentlyContinue"
         )
         #build folder structure based on certain types
         Foreach($Data in $SequenceData | Where type -match "Application|Archive|Script|Package|ModernApp" ){
             $InlineCommands += @(
-                "New-Item '$FileCopyDest\$($Data.Type)s' -ItemType Directory -ErrorAction SilentlyContinue"
+                "New-Item `"$FileCopyDest\$($Data.Type)s`" -ItemType Directory -ErrorAction SilentlyContinue"
             )
             #collect each working directory
             Foreach($directory in $Data.workingDirectory | Select -Unique){
                 $InlineCommands += @(
-                    "New-Item '$FileCopyDest\$($Data.Type)s\$directory' -ItemType Directory -ErrorAction SilentlyContinue"
+                    "New-Item `"$FileCopyDest\$($Data.Type)s\$directory`" -ItemType Directory -ErrorAction SilentlyContinue"
                 )
             }
         }
@@ -694,10 +694,10 @@ Function ConvertFrom-CustomSequence{
     If($SequenceData.sasToken.count -gt 0){
         $Name = "Get Azcopy"
         $InlineCommands = @(
-            "Invoke-WebRequest -uri 'https://aka.ms/downloadazcopy-v10-windows' -OutFile '$FileCopyDest\azcopy.zip'",
-            "Expand-Archive '$FileCopyDest\azcopy.zip' '$FileCopyDest'",
-            "Copy-Item '$FileCopyDest\azcopy_windows_amd64_*\azcopy.exe\' -Destination '$FileCopyDest'",
-            "Remove-Item '$FileCopyDest\azcopy_windows_amd64_*' -Recurse -ErrorAction SilentlyContinue"
+            "Invoke-WebRequest -uri `"https://aka.ms/downloadazcopy-v10-windows`" -OutFile `"$FileCopyDest\azcopy.zip`"",
+            "Expand-Archive `"$FileCopyDest\azcopy.zip`" `"$FileCopyDest`"",
+            "Copy-Item `"$FileCopyDest\azcopy_windows_amd64_*\azcopy.exe\`" -Destination `"$FileCopyDest`"",
+            "Remove-Item `"$FileCopyDest\azcopy_windows_amd64_*`" -Recurse -ErrorAction SilentlyContinue"
         )
         $object = New-Object -TypeName PSObject
         $object | Add-Member -MemberType NoteProperty -Name 'type' -Value "PowerShell"
@@ -715,7 +715,7 @@ Function ConvertFrom-CustomSequence{
         $InlineCommands = @()
         Foreach($Repo in $SequenceData.trustedRepos | Select -Unique){
             $InlineCommands += @(
-                "Set-PSRepository -Name '$Repo' -InstallationPolicy Trusted",
+                "Set-PSRepository -Name `"$Repo`" -InstallationPolicy Trusted",
                 "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12",
                 "Install-PackageProvider -Name Nuget -Scope AllUsers -Force"
             )
@@ -790,30 +790,43 @@ Function ConvertTo-PoshCommands{
     $Commands += "##*============================================="
     $Commands += "# FOR TESTING ONLY: RUN ON REFERENCE IMAGE"
     $Commands += "##*============================================="
-
     $Commands += "# Build working directory"
-    $Commands += "New-Item '$FileCopyDest' -ItemType Directory -ErrorAction SilentlyContinue"
+    $Commands += "`$ErrorActionPreference = `"Stop`""
+    $Commands += "New-Item `"$FileCopyDest`" -ItemType Directory -ErrorAction SilentlyContinue"
     #collect each working directory
     Foreach($Data in $SequenceData | Where type -match "Application|Archive|Script|Package|ModernApp" ){
         $Commands += @(
-            "New-Item '$FileCopyDest\$($Data.Type)s' -ItemType Directory -ErrorAction SilentlyContinue"
+            "New-Item `"$FileCopyDest\$($Data.Type)s`" -ItemType Directory -ErrorAction SilentlyContinue"
         )
         #collect each working directory
         Foreach($directory in $Data.workingDirectory | Select -Unique){
             $Commands += @(
-                "New-Item '$FileCopyDest\$($Data.Type)s\$directory' -ItemType Directory -ErrorAction SilentlyContinue"
+                "New-Item `"$FileCopyDest\$($Data.Type)s\$directory`" -ItemType Directory -ErrorAction SilentlyContinue"
             )
         }
+    }
+
+    #to use Blob shared access token, you must use Azcopy. First is to download it
+    If($SequenceData.runAsSystem -gt $true){
+        $Commands += "# get PSexec"
+        $Commands += @(
+            "Invoke-WebRequest -uri `"https://download.sysinternals.com/files/PSTools.zip`" -OutFile `"$FileCopyDest\PSTools.zip`"",
+            "Expand-Archive `"$FileCopyDest\PSTools.zip`" `"$FileCopyDest`"",
+            "Expand-Archive `"C:\temp\PSTools.zip`" `"$FileCopyDest`""
+            "Remove-Item -Path `"$FileCopyDest\*.*`" -Exclude psexec* -Force"
+            "Remove-Item `"$FileCopyDest\PSTools.zip`" -ErrorAction SilentlyContinue"
+        )
+        $Commands += ''
     }
 
     #to use Blob shared access token, you must use Azcopy. First is to download it
     If($SequenceData.sasToken.count -gt 0){
         $Commands += "# get Azcopy"
         $Commands += @(
-            "Invoke-WebRequest -uri 'https://aka.ms/downloadazcopy-v10-windows' -OutFile '$FileCopyDest\azcopy.zip'",
-            "Expand-Archive '$FileCopyDest\azcopy.zip' '$FileCopyDest'",
-            "Copy-Item '$FileCopyDest\azcopy_windows_amd64_*\azcopy.exe\' -Destination '$FileCopyDest'",
-            "Remove-Item '$FileCopyDest\azcopy_windows_amd64_*' -Recurse -ErrorAction SilentlyContinue"
+            "Invoke-WebRequest -uri `"https://aka.ms/downloadazcopy-v10-windows`" -OutFile `"$FileCopyDest\azcopy.zip`"",
+            "Expand-Archive `"$FileCopyDest\azcopy.zip`" `"$FileCopyDest`"",
+            "Copy-Item `"$FileCopyDest\azcopy_windows_amd64_*\azcopy.exe\`" -Destination `"$FileCopyDest`"",
+            "Remove-Item `"$FileCopyDest\azcopy_windows_amd64_*`" -Recurse -ErrorAction SilentlyContinue"
         )
         $Commands += ''
     }
@@ -822,7 +835,7 @@ Function ConvertTo-PoshCommands{
         Foreach($Repo in $SequenceData.trustedRepos | Select -Unique){
             $Commands += "# Update modules support"
             $Commands += @(
-                "Set-PSRepository -Name '$Repo' -InstallationPolicy Trusted",
+                "Set-PSRepository -Name `"$Repo`" -InstallationPolicy Trusted",
                 "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12",
                 "Install-PackageProvider -Name Nuget -Scope AllUsers -Force"
             )

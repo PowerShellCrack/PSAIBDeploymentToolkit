@@ -389,7 +389,7 @@ Try{
         $SequenceTypes = $TemplateConfigs.customSequence | Where sasToken -ne $null
         #TEST $Type = $SequenceTypes[0]
         Foreach($Type in $SequenceTypes){
-            Write-Host ("Sas Token found.`nChecking SaS Token for [{0}]..." -f $Type.name) -ForegroundColor White -NoNewline
+            Write-Host ("Sas Token found.`nChecking SaS Token for [{0}]..." -f $Type.name) -ForegroundColor Yellow -NoNewline
             $ExpiryDate = [System.Text.RegularExpressions.Regex]::Match($Type.sasToken, '^sp=r&st=(?<Start>.*)&se=(?<Expiry>.*)&spr=(?<Date>.*)').Groups['Expiry'].value
             If((Get-Date) -gt [DateTime]$ExpiryDate){
                 Write-Host ("expired on [{0}]..." -f $ExpiryDate) -ForegroundColor Yellow
@@ -596,9 +596,10 @@ If($BuildImage){
         Start-Sleep 5
         Write-Host '.' -NoNewline -ForegroundColor Gray
         $AzAIBTemplate = Get-AzImageBuilderTemplate @AIBTemplateParams
+
     } until (
         #must return true
-        ($AzAIBTemplate.LastRunStatusRunState -eq 'Succeeded' -or $AzAIBTemplate.LastRunStatusRunState -eq 'Failed')
+        $AzAIBTemplate.LastRunStatusRunState -ne 'Running'
     )
     $stopwatch.Stop()
     #$totalSecs = [math]::Round($stopwatch.Elapsed.TotalSeconds,0)
@@ -624,10 +625,11 @@ If($BuildImage){
         'Failed' {
                 $ImageMsg = "Image failed to create!"
                 Write-Host ("Failed after [{0}]: {1}" -f $totalTime,$AzAIBTemplate.LastRunStatusMessage) -BackgroundColor Red
-                # Find Storage Accounts for Packer logs
-                #https://docs.microsoft.com/en-us/azure/virtual-machines/linux/image-builder-troubleshoot#customization-log
+        }
 
-
+        'Canceled' {
+            $ImageMsg = "Image was cancelled!"
+            Write-Host ("Cancelled after [{0}]: {1}" -f $totalTime,$AzAIBTemplate.LastRunStatusMessage) -BackgroundColor Yellow
         }
     }
 
@@ -638,7 +640,6 @@ If($BuildImage){
 
     # Export Packer logs
     #https://docs.microsoft.com/en-us/azure/virtual-machines/linux/image-builder-troubleshoot#customization-log
-    #=======================================================
     If($ErrorRG = Get-AzResourceGroup -Name "IT_avdimagebuilder-rg_$($TemplateConfigs.Template.imageTemplateName)*" -ErrorAction SilentlyContinue)
     {
         Try{
@@ -657,6 +658,11 @@ If($BuildImage){
             $Blob = Get-AzStorageBlob -Container $packerLogs.name -Context $StorageContext
             #download customization.log
             Get-AzStorageBlobContent -Blob $Blob.Name -Container $packerLogs.name -Destination "$PSScriptRoot\Logs" -Context $StorageContext -Force | Out-Null
+
+            #download the blob as text into memory
+            #$BlobBlock = $PackerLogs.CloudBlobContainer.GetBlockBlobReference($Blob.Name)
+            #$BlobContent = $BlobBlock.DownloadText()
+
             Write-Host "Done" -ForegroundColor Green
             #move and rename the file
             $NewPackerLogPath = ($PSScriptRoot + '\Logs\customization_' + $Template.ToLower() + '_' + $NewVersion + '_' + $DateLogFormat + '.log')
@@ -696,7 +702,7 @@ If($BuildImage){
             TemplateName = $TemplateConfigs.Template.imageTemplateName
             JsonTemplate = $FormattedAIBTemplate
             CustomizationCount = $TemplateData.resources.properties.customize.count
-            CustomizationList = $TemplateCustomizedSteps
+            #CustomizationList = $TemplateCustomizedSteps
             ImageName = $TemplateConfigs.ImageDefinition.Name
             RunOutputName = $buildOutputName
             ImageVersion = $NewVersion
@@ -715,23 +721,3 @@ If($BuildImage){
         Write-Host ("Failed: {0}" -f $_.Exception.message) -BackgroundColor Red
     }
 }
-
-
-# Remove the template (this removes the storage account as well!)
-#=======================================================
-<#
-If($RemoveTemplate){
-
-    If($AzAIBTemplate = Get-AzImageBuilderTemplate @AIBTemplateParams -ErrorAction SilentlyContinue){
-        Try{
-            Write-Host ("{1} Removing Azure Image template [{0}]..." -f $TemplateConfigs.ImageDefinition.Name,$ImageMsg) -ForegroundColor Yellow -NoNewline
-            Remove-AzImageBuilderTemplate -ResourceGroupName $Settings.Resources.imageResourceGroup -ImageTemplateName $TemplateConfigs.Template.imageTemplateName | Out-Null
-            Write-Host "Done" -ForegroundColor Green
-        }
-        Catch{
-            Write-Host ("Failed: {0}" -f $_.Exception.message) -BackgroundColor Red
-            Stop-Transcript;Break
-        }
-    }
-}
-#>

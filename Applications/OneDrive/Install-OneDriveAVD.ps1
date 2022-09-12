@@ -158,10 +158,10 @@ If($Result.ExitCode -notin $ValidExitCodes){
 # POST-INSTALL
 #================
 #configure OneDrive to start at sign in for all users:
-Set-LocalPolicySetting -RegPath 'HKLM:\Microsoft\Windows\CurrentVersion\Run' -Name "OneDrive" -Type String -Value "C:\Program Files (x86)\Microsoft OneDrive\OneDrive.exe /background" -Force
+Set-LocalPolicySetting -RegPath "HKLM:\Microsoft\Windows\CurrentVersion\Run" -Name "OneDrive" -Type String -Value "`"C:\Program Files (x86)\Microsoft OneDrive\OneDrive.exe /background`""
 
 #Enable Silently configure user account by running the following command.
-Set-LocalPolicySetting -RegPath 'HKLM:\SOFTWARE\Policies\Microsoft\OneDrive' -Name "SilentAccountConfig" -Type DWord -Value 1
+Set-LocalPolicySetting -RegPath "HKLM:\SOFTWARE\Policies\Microsoft\OneDrive" -Name "SilentAccountConfig" -Type DWord -Value 1
 
 If($TenantID){
     #Redirect and move Windows known folders to OneDrive by running the following command.

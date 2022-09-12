@@ -1,5 +1,7 @@
 !/Logs/
 /Logs/*
+!/DeploymentShare/
+/DeploymentShare/*
 Settings-*.json
 Applications.json
 /Applications/AdobeAcrobatDC/Configs*
