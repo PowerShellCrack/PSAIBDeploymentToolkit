@@ -187,7 +187,7 @@ IF($LoadDefaultHive){
     New-ItemProperty -Path "HKU:\Temp\Software\Microsoft\Windows\CurrentVersion\Explorer\StartPage" -Name 'DesktopFirst' -PropertyType DWord -Value 1 -Force
 
     ##* Open new window by default
-    New-ItemProperty -Path "HKU:\Temp\Software\Microsoft\Windows\CurrentVersion\ImmersiveShell\Launcher" -Name 'DesktopAppsAlwaysLaunchNewInstance' -PropertyType DWord -Value 1 -Force
+    #New-ItemProperty -Path "HKU:\Temp\Software\Microsoft\Windows\CurrentVersion\ImmersiveShell\Launcher" -Name 'DesktopAppsAlwaysLaunchNewInstance' -PropertyType DWord -Value 1 -Force
 
     ###* Set Desktop Screensaver and wallpaper
     New-ItemProperty -Path "HKU:\Temp\Control Panel\Desktop" -Name 'TileWallpaper' -Value "0" -Force
@@ -230,8 +230,8 @@ IF($LoadDefaultHive){
     #New-ItemProperty -Path "HKU:\Temp\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name '"HideDrivesWithNoMedia"' -PropertyType DWord -Value 1 -Force
 
     ##* Remove Autorun
-    Remove-Item "HKU:\Temp\Software\Microsoft\Windows\CurrentVersion\Explorer\MountPoints2" -Force -ErrorAction SilentlyContinue
-    New-Item -Path "HKU:\Temp\Software\Microsoft\Windows\CurrentVersion\Explorer\MountPoints2" -ItemType Directory -ErrorAction SilentlyContinue
+    #Remove-Item "HKU:\Temp\Software\Microsoft\Windows\CurrentVersion\Explorer\MountPoints2" -Force -ErrorAction SilentlyContinue
+    #New-Item -Path "HKU:\Temp\Software\Microsoft\Windows\CurrentVersion\Explorer\MountPoints2" -ItemType Directory -ErrorAction SilentlyContinue
 
     New-Item "HKU:\Temp\Software\Microsoft\Windows\CurrentVersion\Policies" -ItemType Directory -ErrorAction SilentlyContinue
     New-Item "HKU:\Temp\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" -ItemType Directory -ErrorAction SilentlyContinue
@@ -259,3 +259,4 @@ IF($LoadDefaultHive){
 
 
 Write-Host "Completed Branding script" -ForegroundColor Green
+Write-Host "Exit code:" $LASTEXITCODE

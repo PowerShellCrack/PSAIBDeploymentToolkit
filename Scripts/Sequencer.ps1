@@ -430,7 +430,7 @@ Function ConvertTo-AIBCustomization{
                 $object | Add-Member -MemberType NoteProperty -Name 'type' -Value "PowerShell"
                 $object | Add-Member -MemberType NoteProperty -Name 'name' -Value ("Provisioning appx: " + $CustomData.appxBundle)
                 $object | Add-Member -MemberType NoteProperty -Name 'runElevated' -Value $True
-                $object | Add-Member -MemberType NoteProperty -Name 'runAsSystem' -Value $False
+                $object | Add-Member -MemberType NoteProperty -Name 'runAsSystem' -Value $True
                 $object | Add-Member -MemberType NoteProperty -Name 'inline' -Value $InlineCommands
                 If($IncludePoshCmd){$object | Add-Member -MemberType NoteProperty -Name 'PoshCommand' -Value $InlineCommands}
                 $ObjectArray += $object
@@ -606,9 +606,9 @@ Function ConvertTo-AIBCustomization{
         $object = New-Object -TypeName PSObject
         $object | Add-Member -MemberType NoteProperty -Name 'type' -Value "WindowsRestart"
         If($CustomData.name.Length -gt 0){
-            $object | Add-Member -MemberType NoteProperty -Name 'restartCheckCommand' -Value "write-host 'restarting after $($CustomData.name)'"
+            $object | Add-Member -MemberType NoteProperty -Name 'restartCheckCommand' -Value "write-host `"restarting after $($CustomData.name)`""
         }Else{
-            $object | Add-Member -MemberType NoteProperty -Name 'restartCheckCommand' -Value "write-host 'restarting system'"
+            $object | Add-Member -MemberType NoteProperty -Name 'restartCheckCommand' -Value "write-host `"restarting system`""
         }
 
         If($CustomData.restartTimeout.length -gt 0){
@@ -730,7 +730,7 @@ Function ConvertFrom-CustomSequence{
         $object | Add-Member -MemberType NoteProperty -Name 'type' -Value "PowerShell"
         $object | Add-Member -MemberType NoteProperty -Name 'name' -Value "Install Modules"
         $object | Add-Member -MemberType NoteProperty -Name 'runElevated' -Value $True
-        $object | Add-Member -MemberType NoteProperty -Name 'runAsSystem' -Value $False
+        $object | Add-Member -MemberType NoteProperty -Name 'runAsSystem' -Value $True
         $object | Add-Member -MemberType NoteProperty -Name 'inline' -Value $InlineCommands
         #this is to export to ps1 file for testing
         If($IncludePoshCmd){$object | Add-Member -MemberType NoteProperty -Name 'PoshCommand' -Value $InlineCommands}

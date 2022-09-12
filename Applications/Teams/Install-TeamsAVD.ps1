@@ -247,3 +247,5 @@ Catch{
 #Cleanup and Complete
 Remove-Item $LocalPath -Force -Recurse -ErrorAction SilentlyContinue | Out-Null
 Write-YaCMLogEntry -Message ('Completed {0} install' -f $ProductName) -Passthru
+
+Write-Host "Exit code:" $LASTEXITCODE
