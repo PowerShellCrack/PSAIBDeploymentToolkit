@@ -20,3 +20,4 @@ Tests.ps1
 *.msi
 *.zip
 *.vbs
+thumbs.db

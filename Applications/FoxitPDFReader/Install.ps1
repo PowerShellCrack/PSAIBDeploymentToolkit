@@ -39,3 +39,4 @@ catch {
     write-log "Error installing Foxit Reader: $ErrorMessage"
 }
 #endregion
+Write-Host "Exit code:" $LASTEXITCODE

@@ -48,6 +48,7 @@ Set-LocalPolicySetting -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Se
 #New-Item -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\rdp-sxs" -ItemType directory
 Set-LocalPolicySetting -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\rdp-sxs" -Name MaxMonitors -Type DWORD -Value 4
 Set-LocalPolicySetting -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\rdp-sxs" -Name MaxXResolution -Type DWORD -Value 5120
-Set-LocalPolicySetting -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\rdp-sxs" -Name MaxYResolution -Type DWORD -Value 2880 -Force
+Set-LocalPolicySetting -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\rdp-sxs" -Name MaxYResolution -Type DWORD -Value 2880
 
 Write-YaCMLogEntry -Message ('Completed AVD optimizations') -Passthru
+Write-Host "Exit code:" $LASTEXITCODE

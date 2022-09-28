@@ -606,9 +606,9 @@ Function ConvertTo-AIBCustomization{
         $object = New-Object -TypeName PSObject
         $object | Add-Member -MemberType NoteProperty -Name 'type' -Value "WindowsRestart"
         If($CustomData.name.Length -gt 0){
-            $object | Add-Member -MemberType NoteProperty -Name 'restartCheckCommand' -Value "write-host `"restarting after $($CustomData.name)`""
+            $object | Add-Member -MemberType NoteProperty -Name 'restartCheckCommand' -Value "write-host 'restarting after $($CustomData.name)'"
         }Else{
-            $object | Add-Member -MemberType NoteProperty -Name 'restartCheckCommand' -Value "write-host `"restarting system`""
+            $object | Add-Member -MemberType NoteProperty -Name 'restartCheckCommand' -Value "write-host 'restarting system'"
         }
 
         If($CustomData.restartTimeout.length -gt 0){
@@ -616,10 +616,10 @@ Function ConvertTo-AIBCustomization{
             If($IncludePoshCmd){$object | Add-Member -MemberType NoteProperty -Name 'PoshCommand' -Value "Restart-Computer -Timeout $($CustomData.restartTimeout) -Wait -Force -WhatIf"}
         }ElseIf($CustomData.type -eq 'WindowsUpdate'){
             $object | Add-Member -MemberType NoteProperty -Name 'restartTimeout' -Value "10m"
-            If($IncludePoshCmd){$object | Add-Member -MemberType NoteProperty -Name 'PoshCommand' -Value "Restart-Computer -Timeout 10 -Force"}
+            If($IncludePoshCmd){$object | Add-Member -MemberType NoteProperty -Name 'PoshCommand' -Value "Restart-Computer -Timeout 10 -Wait -Force -WhatIf"}
         }Else{
             $object | Add-Member -MemberType NoteProperty -Name 'restartTimeout' -Value "5m"
-            If($IncludePoshCmd){$object | Add-Member -MemberType NoteProperty -Name 'PoshCommand' -Value "Restart-Computer -Timeout 5 -Force"}
+            If($IncludePoshCmd){$object | Add-Member -MemberType NoteProperty -Name 'PoshCommand' -Value "Restart-Computer -Timeout 5 -Wait -Force -WhatIf"}
         }
         $ObjectArray += $object
     }

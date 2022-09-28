@@ -40,3 +40,5 @@ catch {
     write-log "Error installing Notepad++: $ErrorMessage"
 }
 #endregion
+
+Write-Host "Exit code:" $LASTEXITCODE

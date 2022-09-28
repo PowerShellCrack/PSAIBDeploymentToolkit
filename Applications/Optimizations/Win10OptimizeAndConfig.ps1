@@ -2454,3 +2454,4 @@ If($RemoveUnusedPrinters)
 
 
 Write-YaCMLogEntry -Message ("Completed Windows 10 Optimizations") -Passthru
+Write-Host "Exit code:" $LASTEXITCODE

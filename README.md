@@ -17,17 +17,23 @@ Win10avdO365Image | Gen2 Marketplace VM with M365 apps and updates set to run. |
 Win10avdTestImage | Gen2 Marketplace VM with two apps (Foxit and Notepad++)| 21h2, Foxit, Notepad++ |Yes|**Success**| 32min build time
 Win10avdTest2Image | Gen2 Marketplace VM with branding and multiple apps and updates set to run.| 21h2, Branding, Foxit, Notepad++, Adobe Reader, LAPS, Microsoft News Appx, Updates |Yes|**Success but failed**| 11min build time. Image completed with no errors, but the distribution timed out.
 Win10avdSimpleImage | Gen2 Marketplace VM with branding script (wallpaper and lockscreen) and updates set to run.| 21h2, Branding, Updates |Yes|**Success**| Needs work on branding script
-Win10avdBaseImage| Gen2 Marketplace VM; added scripts to install Microsoft 365 apps to latest version in Multisession mode with policy configured | 21h2, Office 365, Teams, Fslogix, Onedrive, Updates, Optimizations, VM Preparation | Yes | Failed: Operation timed out | Some issues with application scripts and installer for modules; added PSGallery trust and Nuget update for anything PowerShell calls
-Win10avdBaselineImage| Gen2 Marketplace VM; added scripts to install Microsoft 365 apps to latest version in Multisession mode with policy configured, and baseline software | 21h2, Office 365, Teams, Fslogix, Onedrive, Adobe Acrobat DC, Laps, Microsoft News app, Updates, Optimizations, VM Preparation |  |
+Win10avdBaseImage| Gen2 Marketplace VM; added scripts to install Microsoft 365 apps to latest version in Multisession mode with policy configured | 21h2, Office 365, Teams, Fslogix, Onedrive, Updates, Optimizations, VM Preparation | Yes | Failed: Operation timed out | Some issues with application scripts and installer for modules; added PSGallery trust and Nuget update for anything PowerShell calls. Manually running scripts on AVD reference Image using psexec to simulate SYSTEM works just fine
+Win10avdBaselineImage| Gen2 Marketplace VM; added scripts to install Microsoft 365 apps to latest version in Multisession mode with policy configured, and baseline software | 21h2, Office 365, Teams, Fslogix, Onedrive, Adobe Acrobat DC, Laps, Microsoft News app, Updates, Optimizations, VM Preparation |  | |
 Win10avdHardenedImage| Gen2 Marketplace VM; added scripts to install Microsoft 365 apps to latest version in Multisession mode with STIG policy configured | 21h2, Office 365, Teams, Fslogix, Onedrive, Updates, Optimizations, VM Preparation, STIGS | No ||Working on STIG scripts
 
 
 ## Apps tested
 Name|Version|Image Association|Install Type|Results|Comments
 --|--|--|--|--|--
-FoxitPDFReader | 1201 | Win10avdTestImage | Msi with arguments | exit 0 | Used inline command with sas token for zip download
-Notepad Plus Plus | 8.4.4| Win10avdTestImage | exe with argument | exit 0 | Used inline command with sas token for zip download
-
+Office365 | Latest | Win10avdBaselineImage | setup.exe | | Downloads the setup and builds the configuration and installed with settings
+Teams Machine Wide Installer | Latest| Win10avdBaselineImage | Teams_windows_x64.msi | | Downloads the setup and builds the installed with AVD mode
+Onedrive | Latest| Win10avdBaselineImage | OnedriveSetup.msi | | Downloads the setup and install in all users
+Fslogix | Latest | Win10avdBaselineImage | FslogixAppsSetup.exe | | Downloads, extracts the setup and install and configures
+LAPS |  | Win10avdTestImage | Laps.x64.msi |  | Used inline command with sas token for zip download
+Adobe Acrobat Reader DC |  | Win10avdBaselineImage | | | Used inline command with sas token for zip download and extract locally and installs
+AzureMonitor |  | Win10avdTestImage | Laps.x64.msi | | Used inline command with sas token for zip download and extract locally and installs
+FoxitPDFReader | 1201 | Win10avdTestImage | FoxitPDFReader1201_enu_Setup.msi |  | Used inline command with sas token for zip download
+Notepad Plus Plus | 8.4.4| Win10avdTestImage | npp.8.4.4.Installer.x64.exe |  | Used inline command with sas token for zip download
 
 ## TODOs
 
@@ -48,8 +54,8 @@ Notepad Plus Plus | 8.4.4| Win10avdTestImage | exe with argument | exit 0 | Used
             - application-onedrive-latest
             - application-teams-latest
 
-- Develop a method to document definition version (after each build).
-- Version cleanup
+- Develop a method to document definition version (after each build) using custom table in log analytics.
+- Azure Image Version cleanup
 
 ## Prereqs
 
@@ -65,8 +71,8 @@ If you are contributing or using the code. Please create a copy of the _Settings
 ## Scripts
 
 - **BuildAIBTemplate.ps1** <-- Main script to build aib template
-- **InvokeScriptsOnAzureVM.ps1** <-- designed to run post configs using Powershell extension NOT WORKING / TESTING
-- **PrepareAIBMDTEnv.ps1** <-- Starting to work AIB configurator. NOT WORKING / TESTING
+- **InvokeScriptsOnAzureVM.ps1** <-- designed to run post configs using Powershell extension. **NOT WORKING / TESTING**
+- **PrepareAIBMDTEnv.ps1** <-- Starting to work AIB configurator. **NOT WORKING / TESTING**
 
 ## Examples
 
@@ -76,7 +82,7 @@ If you are contributing or using the code. Please create a copy of the _Settings
 
 ## Output
 
-There is a _Logs_ folder that will contain a dated transcript of the AIB sequence called and the json arm template generated.
+There is a _Logs_ folder that will contain a dated transcript of the AIB sequence called and the json arm template is generated there for reference.
 
 ## **aib.json** auto formatting
 
@@ -151,7 +157,7 @@ Where the **aib.json** file just needs a single application with file dependenci
 ```
 
 
-2. _Example:_ to install an application from blob source, say it requires a reboot step and dealing with file dependency like the _example 1_. In the **aib.json** you can specify items like:
+2. _Example:_ to install an application from blob source and say it requires a reboot step while dealing with file dependency like the _example 1_. In the **aib.json** you can specify items like:
   - arguments
   - restart
 
@@ -221,7 +227,7 @@ Here are the many `customsequences` types that can be used:
 > All types support **restart** Boolean property
 
 ## Type: **Applications**
-All applications are **elevated** and run as **system**.
+> All applications and scripts are **elevated** and run as **system**.
 
 Supported parameters are:
 - **Name** - Name of the process
@@ -422,7 +428,7 @@ Supported parameters are:
 
 ## Type: **WindowsUpdate**
 
-Based on the idea of the _WindowsUpdate_ command for the AIB customization, but with standard options. Filter capability not supported; but may be coming soon
+Based on the idea of the _WindowsUpdate_ command for the AIB customization, but with standard options. Filter capability not available; but may be coming soon
 
 Supported parameters are:
 - **restartTimeout** - Optional, boolean, generates the _WindowsRestart_ customization with 10 minute timeout
@@ -462,7 +468,7 @@ Supported parameters are:
 - https://docs.microsoft.com/en-us/azure/virtual-machines/windows/image-builder-powershell
 
 # DISCLAIMER
-> Even though I have tested this to the extend that I could, I want to ensure your aware of Microsoft’s position on developing scripts.
+> Even though I have tested this to the extend that I could, I want to ensure your aware of Microsoft’s position on developing custom scripts.
 
 This Sample Code is provided for the purpose of illustration only and is not intended to be used in a production environment.  THIS SAMPLE CODE AND ANY RELATED INFORMATION ARE PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE IMPLIED WARRANTIES OF MERCHANTABILITY AND/OR FITNESS FOR A PARTICULAR PURPOSE.  We grant You a nonexclusive, royalty-free right to use and modify the Sample Code and to reproduce and distribute the object code form of the Sample Code, provided that You agree: (i) to not use Our name, logo, or trademarks to market Your software product in which the Sample Code is embedded; (ii) to include a valid copyright notice on Your software product in which the Sample Code is embedded; and (iii) to indemnify, hold harmless, and defend Us and Our suppliers from and against any claims or lawsuits, including attorneys’ fees, that arise or result from the use or distribution of the Sample Code.
 

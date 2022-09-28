@@ -913,3 +913,4 @@ If($ApplyEMETMitigations)
 
 
 Write-YaCMLogEntry -Message ('Completed Windows 10 STIGS and Mitigations') -Passthru
+Write-Host "Exit code:" $LASTEXITCODE

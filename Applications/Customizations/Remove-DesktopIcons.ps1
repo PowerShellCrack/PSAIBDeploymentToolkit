@@ -39,3 +39,4 @@ foreach ($GUID in $listGUIDs)
     }
 }
 Write-YaCMLogEntry -Message ('Completed desktop Icon removal') -Passthru
+Write-Host "Exit code:" $LASTEXITCODE

@@ -96,3 +96,4 @@ try{
 
 
 Write-YaCMLogEntry -Message ('Completed {0} install' -f $ProductName) -Passthru
+Write-Host "Exit code:" $LASTEXITCODE

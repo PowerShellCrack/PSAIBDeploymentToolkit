@@ -551,9 +551,9 @@ If(-Not($AzDeployGroup = Get-AzResourceGroupDeployment @AIBDeploymentParams -Err
     }
     Catch{
         #Write-Host ("Failed: {0}" -f $_.Exception.message) -BackgroundColor Red
-        Get-AzImageBuilderTemplate @AIBTemplateParams | Select-Object ProvisioningState, ProvisioningErrorMessage
+        #Get-AzImageBuilderTemplate @AIBTemplateParams | Select-Object ProvisioningState, ProvisioningErrorMessage
         If($CleanOnFailure){
-            Remove-AzResourceGroupDeployment @AIBDeploymentParams -ErrorAction SilentlyContinue
+            Remove-AzResourceGroupDeployment @AIBDeploymentParams -ErrorAction SilentlyContinue | Out-Null
         }
         #Stop-Transcript;Break
         Send-AIBMessage @AIBMessageParam -Message ("Failed: {0}" -f $_.Exception.message) -Severity 3 -BreakonError
@@ -634,9 +634,9 @@ If($BuildImage){
     }
 
     #grab the output data
-    Write-Host ('Run output [{0}] results are...' -f $buildOutputName)
-    $RunOutputDetails = Get-AzImageBuilderTemplateRunOutput @AIBTemplateParams -RunOutputName $buildOutputName
-    Get-AzImageBuilderTemplateRunOutput -InputObject $RunOutputDetails | Select *
+    #Write-Host ('Run output [{0}] results are...' -f $buildOutputName)
+    #$RunOutputDetails = Get-AzImageBuilderTemplateRunOutput @AIBTemplateParams -RunOutputName $buildOutputName -ErrorAction SilentlyContinue
+    #Get-AzImageBuilderTemplateRunOutput -InputObject $RunOutputDetails -ErrorAction SilentlyContinue | Select *
 
     # Export Packer logs
     #https://docs.microsoft.com/en-us/azure/virtual-machines/linux/image-builder-troubleshoot#customization-log
@@ -674,6 +674,8 @@ If($BuildImage){
                 Write-Host ("[{0}]" -f  $NewPackerLogPath) -ForegroundColor Green
             }
             $PackerLogsExported = Send-AIBMessage @AIBMessageParam -Passthru
+            #output the telemetry line
+            Find-CustomizationLogEntry -LogFolder $NewPackerLogPath
         }
         Catch{
             Write-Host ("Failed to export log: {0}" -f $_.Exception.message) -BackgroundColor Red
@@ -721,4 +723,3 @@ If($BuildImage){
         Write-Host ("Failed: {0}" -f $_.Exception.message) -BackgroundColor Red
     }
 }
-

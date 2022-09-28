@@ -521,3 +521,4 @@ If($RemoveFODPackages)
 
 
 Write-YaCMLogEntry -Message 'Completed App Optimizations and Configuration' -Passthru
+Write-Host "Exit code:" $LASTEXITCODE

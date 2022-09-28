@@ -152,3 +152,4 @@ If($AVDScenario){
 #Cleanup and Complete
 Remove-Item $Localpath -Force -Recurse -ErrorAction SilentlyContinue | Out-Null
 Write-YaCMLogEntry -Message ('Completed {0} install' -f $ProductName) -Passthru
+Write-Host "Exit code:" $LASTEXITCODE

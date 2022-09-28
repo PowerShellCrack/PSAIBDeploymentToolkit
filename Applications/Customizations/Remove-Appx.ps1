@@ -89,3 +89,4 @@ foreach ($App in $AllUserAppx)
 }
 
 Write-YaCMLogEntry -Message ('Completed App removal') -Passthru
+Write-Host "Exit code:" $LASTEXITCODE

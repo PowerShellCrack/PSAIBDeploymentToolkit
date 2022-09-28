@@ -149,3 +149,4 @@ DISM /online /Cleanup-Image /StartComponentCleanup
 DISM /online /Cleanup-Image /StartComponentCleanup /ResetBase
 
 Write-YaCMLogEntry -Message 'Completed AVD Prepare script' -Passthru
+Write-Host "Exit code:" $LASTEXITCODE
